@@ -1,28 +1,41 @@
 #! /usr/bin/make  -f
 
-# Database Information.  Make sure that you have your .pgpass
-# specified so you don't neeed to use a password to log into this
-# account.
+# Database Information.  Make sure that you have your .pgservice_conf
+# and maybe .pgpass specified so you don't neeed to use a password to
+# log into this account.  This doesn't include initializing your
+# database.  You might need to RTFM, but 
+# pgdir:=/usr/share/postgresql/9.1/contrib/postgis-2.0/
+# psql service=${service} -c "create extension plpgsql" 
+# psql service=${service} -f ${pgdir}/postgis.sql
+# for rasters
+#psql service=${service} -f ${pgdir}/rtpostgis.sql
+
 service:=postgis-data
-#database:= bioenergy
 
 # Projection information.  This is id in the spatial_ref_sys table.
-srid:=9102004
+srid:=97260
+
+# Snap information.  This is used (by some) to snap points to a grid
+snap:=1
 
 # If you are using a non-standard projection, then you need to update
 # this table.  See the rule 'add-spatialref' below for getting that
 # from www.spatialref.org.  If you do that, note that ESRI srids
 # sometimes have an additional 9 prepended.
 #
-#add-spatialref:srid-url:=http://spatialreference.org/ref/esri/${srid}/postgis/
+#add-spatialref:srid-url:=http://spatialreference.org/ref/sr-org/${srid}/postgis/
 #add-spatialref:
 #	wget -nv -O - ${srid-url} | ${PG}
 
-# Downloads - By default where to download data, used in some helper
-# functions below:  Can overwrite in scripts.
-down:=down
+# states.  Some datasets are ameniable to be limited to a small number
+# of states.  Here use the two letter desingation.  If unset, probably
+# should not do anything.  This is not used always.
+states:=CA NV OR WA ID
 
-PG:=psql service=${service} --variable=srid=${srid}
+#SHELL - Use bash
+SHELL:=/bin/bash
+
+PG:=psql service=${service} --variable=srid=${srid} --variable=snap=${snap}
 
 
 #################################################################
@@ -44,8 +57,6 @@ PG-TSV:=${PG} -A -F'	' --pset footer
 # Postgis commands.
 shp2pgsql:=shp2pgsql
 pgsql2shp:=pgsql2shp
-#pgsql2shp:=pgsql2shp -h localhost -p 5433 -d ${database}
-#shp2pgsql:=/c/Program\ Files\ \(x86\)/PostgreSQL/8.3/bin/shp2pgsql
 
 # ogr for dbf only data since Postgis is screwed up now.
 ogrdsn:=PG:"dbname=${database}"
@@ -53,11 +64,6 @@ ogr_dbf:=ogr2ogr -overwrite -f "PostgreSQL" PG:"dbname=${database}"
 db2kml:=ogr2ogr -overwrite -f KML 
 
 # These are some helper functions you can use in your own makefiles
-
-define fetch_zip 
-	[[ -f ${down}/$(notdir $1) ]] || ( cd ${down}; wget $1) ; 
-	[[ -f ${down}/$2 ]] || (cd ${down}; unzip $(notdir $1) )
-endef
 
 define add_dbf_cmd
 	${PG} -c 'drop table if exists $1 cascade '

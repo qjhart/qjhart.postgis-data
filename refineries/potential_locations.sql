@@ -7,21 +7,26 @@ set search_path=refineries,network,public;
 
 create or replace view refineries.has_populated as 
 select distinct qid, True as populated
-from network.place cx where cx.pop_2000>10000;
+from bts.place cx where cx.pop_2000>10000 and cx.pop_2000 < 100000;
+
+create or replace view refineries.not_city as 
+select distinct qid, True as populated
+from bts.place cx where cx.pop_2000 < 100000;
 
 create or replace VIEW refineries.has_railway as 
 select gid,qid, True as railway 
-from network.place c join network.place_railwaynode r  
+from bts.place c join bts.place_railwaynode r  
 on (c.gid=r.p_gid);
 
-create or replace VIEW refineries.has_fuel_port as
-select gid,qid,True as fuel_port 
-from network.place p join network.place_fuel_port fp on (p.gid=fp.p_gid);
+-- Fuel port is currently removed from consideration
+--create or replace VIEW refineries.has_fuel_port as
+--select gid,qid,True as fuel_port 
+--from bts.place p join bts.place_fuel_port fp on (p.gid=fp.p_gid);
 
 create or replace VIEW refineries.has_connected as
-select qid,fuel_port as connected
-from has_fuel_port
-union 
+--select qid,fuel_port as connected
+--from has_fuel_port
+--union 
 select qid,railway as connected 
 from has_railway;
 
@@ -41,11 +46,9 @@ create or replace view refineries.has_terminal as
 select distinct qid, True as terminal
 from refineries.terminals;
 
-
 create or replace view refineries.has_ethanol as 
 select distinct qid, True as ethanol
 from refineries.ethanol_facility;
-
 
 create or replace VIEW refineries.has_similar as
 select qid,epa as similar
@@ -62,6 +65,19 @@ from refineries.has_ethanol
 union
 select qid,terminal as similar
 from refineries.has_terminal;
+
+create or replace VIEW refineries.in_ozone
+select distinct qid,TRUE as in_ozone as 
+from bts.place p 
+join greenbk.ozone o 
+on st_intersects(p.centroid,o.boundary) where o is not null;
+
+create or replace VIEW refineries.in_pm25 as 
+select distinct qid,TRUE as in_pm25 
+from bts.place p 
+join greenbk.pm25 o 
+on st_intersects(p.centroid,o.boundary) where o is not null;
+
 
 -- Potential locations is pretty simple.  It's just any location has
 -- is connected and is either populated enough, or has an existing
@@ -83,7 +99,7 @@ full outer join has_ethanol using (qid) ) as f using (qid);
 drop table if exists m_potential_location;
 create table m_potential_location 
 as select c.gid,c.centroid,p.* 
-from network.place c join potential_location p using (qid);
+from bts.place c join potential_location p using (qid);
 
 alter table m_potential_location add constraint m_potential_location_pk primary key(gid);
 create index m_potential_location_centroid_gist on m_potential_location using gist(centroid gist_geometry_ops);
@@ -98,9 +114,9 @@ create table  proxy_location as
 select distinct p1.qid as src_qid,p2.qid as proxy_qid,
                 c2.pop_2000-c1.pop_2000 as pop_diff
 from m_potential_location p1 
-join network.place c1 using (qid),
+join bts.place c1 using (qid),
 m_potential_location p2 
-join network.place c2 using (qid) 
+join bts.place c2 using (qid) 
 where p1.qid=p2.qid or  
       ( ST_Dwithin(c1.centroid,c2.centroid,:proxy_distance)
         and (    c1.pop_2000 < c2.pop_2000 
@@ -119,7 +135,7 @@ create index proxy_location_proxy_qid on proxy_location(proxy_qid);
 drop table if exists m_proxy_location;
 create table m_proxy_location as 
 select c.name,p.* 
-from network.place c 
+from bts.place c 
 join (select distinct proxy_qid as qid from proxy_location ) as x using (qid) 
 join m_potential_location p using (qid);
 
