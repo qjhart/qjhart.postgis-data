@@ -1,0 +1,10 @@
+These are a few datasets from the USDA Forest economics and policy.
+All I really needed was the approximate location, and nearest town,
+which is why there is very litte modifications to the incoming data.
+
+
+2012-02-23  Quinn Hart  <qjhart@ucdavis.edu>
+
+	* Updated to include all mills.
+
+

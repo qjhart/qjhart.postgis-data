@@ -1,0 +1,24 @@
+This is USDA Forest and Economics policy data.
+
+The data was imported by Quinn Hart <qjhart@ucdavis.edu>, originally
+around 2012-02-21 from sources obtained from:
+http://www.srs.fs.usda.gov/econ/data/mills
+
+This data is either in the public domain, as federal data, or not
+specified.  The following disclaimer is included:
+
+These data were collected from different sources, each with their own
+currentness. Data on pulp mills across the continental United States
+were based on best available information as of February 2005. Data on
+other mills in Western states and in Texas were collected in
+2004. Data on other mills from the remaining Southern states were
+collected from 1999 to 2001. Mill data for northern and north central
+states have thus far not been updated since our previous 2000 dataset,
+so mill data in these states are derived from data collected between
+1994 and 1998. However, data for pulp mills in this and all the other
+regions were updated based on an FPL survey conducted in 2000. Some
+mills may have closed or idled, relocated, or changed their name or
+address since their information was collected. For pulp mills some
+effort was made to update their name, address and operational status
+as of 2005. This was not undertaken for other mill types.
+
