@@ -1,0 +1,12 @@
+syntax: glob
+*~
+
+syntax: regexp
+(.*/)?\#[^/]*\#$
+
+syntax: glob
+*.zip
+
+# Don't include db file touches.
+syntax: regexp
+(.*/)db(/.*)

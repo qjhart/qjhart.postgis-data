@@ -1,0 +1,5 @@
+grout.py is a first cut at using the google directions api to calculate costs for routing along google's road network. 
+
+Google has both a directions (http://code.google.com/apis/maps/documentation/directions/) and distance matrix (http://code.google.com/apis/maps/documentation/distancematrix/) APIs. Matrix api just provides the source destintion and time/distance attributes. Directions can be used then to generate the actual routing.
+ 
+Currently grout.py can generate a json object representing the least-cost path from random source-destination combinations generated for Northern California. Maximum OD pairs tested is 45. I've added some text that can be used in postgis queries. 
