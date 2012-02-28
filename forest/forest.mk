@@ -40,7 +40,7 @@ db/forest.pulpmills:db/%:db/forest
 	${PG} -c 'update $* set centroid=st_snapToGrid(centroid,${snap})'
 	${PG} -c "select * from bts.add_and_find_qid('$*','state','town')";
 	${PG} -c "delete from $* where state not in ($(subst ${space},${comma},$(patsubst %,'%',${states})))"
-	${PG} -c "alter $* drop column area; alter $* drop column area;";
+	${PG} -c "alter table $* drop column area; alter table $* drop column perimeter;";
 	rm -rf ${pm}.*
 	touch $@
 
@@ -56,7 +56,7 @@ db/forest.mills:db/%:db/forest
 	${PG} -c 'update $* set centroid=st_snapToGrid(centroid,${snap})'
 	${PG} -c "select * from bts.add_and_find_qid('$*','state','town')";
 	${PG} -c "delete from $* where state not in ($(subst ${space},${comma},$(patsubst %,'%',${states})))"
-	${PG} -c "alter $* drop column area; alter $* drop column area;";
+	${PG} -c "alter table $* drop column area; alter table $* drop column perimeter;";
 	rm -rf ${m}.*
 	touch $@
 
