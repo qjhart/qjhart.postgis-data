@@ -1,0 +1,13 @@
+* Manuscript Preparation in LaTeX
+** LaTeX Version
+
+You are required to use LaTeX2e. If you do not have the latest version of LaTeX, you can download it from a number of sites including http://www.LaTeX-project.org/.
+
+** PLoS Provided Files
+
+plos_template.tex: For your convenience, PLoS provides a template for LaTeX submissions below. Use this template file as an empty framework for your submission. Do NOT change or remove elements from the template.
+plos2009.bst: BibTeX style sheet. Use this file to specify the formatting of your BibTeX file. This will ensure that your references are generated in the correct format.
+LaTeX Formatting Best Practices
+
+Below are some "best practices" for preparing your LaTeX manuscript. Though it may seem that we are not taking full advantage of the extensive abilities of LaTeX, due to current Typesetting constraints, we convert your LaTeX file our publishing format using a commercial software package. Some of the more "creative" (and even several somewhat standard) capabilities of LaTeX do not convert well.
+http://www.plosone.org/static/latexGuidelines.action
