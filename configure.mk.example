@@ -1,0 +1,74 @@
+#! /usr/bin/make  -f
+
+# Database Information.  Make sure that you have your .pgpass
+# specified so you don't neeed to use a password to log into this
+# account.
+service:=postgis-data
+#database:= bioenergy
+
+# Projection information.  This is id in the spatial_ref_sys table.
+srid:=9102004
+
+# If you are using a non-standard projection, then you need to update
+# this table.  See the rule 'add-spatialref' below for getting that
+# from www.spatialref.org.  If you do that, note that ESRI srids
+# sometimes have an additional 9 prepended.
+#
+#add-spatialref:srid-url:=http://spatialreference.org/ref/esri/${srid}/postgis/
+#add-spatialref:
+#	wget -nv -O - ${srid-url} | ${PG}
+
+# Downloads - By default where to download data, used in some helper
+# functions below:  Can overwrite in scripts.
+down:=down
+
+PG:=psql service=${service} --variable=srid=${srid}
+
+
+#################################################################
+# Shouldn't need to touch below: Well maybe to find programs.
+#
+#################################################################
+# Verify have read the configuration data
+configure.mk:=1
+
+# standard variables for text
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+
+# For writing CSV files
+PG-CSV:=${PG} -A -F',' --pset footer
+PG-TSV:=${PG} -A -F'	' --pset footer
+
+# Postgis commands.
+shp2pgsql:=shp2pgsql
+pgsql2shp:=pgsql2shp
+#pgsql2shp:=pgsql2shp -h localhost -p 5433 -d ${database}
+#shp2pgsql:=/c/Program\ Files\ \(x86\)/PostgreSQL/8.3/bin/shp2pgsql
+
+# ogr for dbf only data since Postgis is screwed up now.
+ogrdsn:=PG:"dbname=${database}"
+ogr_dbf:=ogr2ogr -overwrite -f "PostgreSQL" PG:"dbname=${database}"
+db2kml:=ogr2ogr -overwrite -f KML 
+
+# These are some helper functions you can use in your own makefiles
+
+define fetch_zip 
+	[[ -f ${down}/$(notdir $1) ]] || ( cd ${down}; wget $1) ; 
+	[[ -f ${down}/$2 ]] || (cd ${down}; unzip $(notdir $1) )
+endef
+
+define add_dbf_cmd
+	${PG} -c 'drop table if exists $1 cascade '
+	${ogr_dbf} $2 -nln $1
+	${PG} -c 'alter table $1 rename ogc_fid to gid'
+#	${shp2pgsql} -d -n $2 $1 | ${PG} > /dev/null
+endef
+
+define add_dbf_rule
+db/$1:${down}/$2
+	$(call add_dbf_cmd,$1,${down}/$2)
+	touch db/$1
+endef
+
