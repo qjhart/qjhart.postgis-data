@@ -23,10 +23,9 @@ create table epa_facility (
 
 \COPY epa_facility (program_system_acronym,facility_name,registry_id,sic_code,city_name,county_name,state_code,default_map_flag,latitude,longitude,accuracy_value) FROM 'epa_facility.csv' WITH DELIMITER AS ',' QUOTE AS '"' CSV HEADER
 
-select * from add_centroid_from_ll('envirofacts','epa_facility','longitude','latitude',:srid,:snap);
+select * from bts.add_centroid_from_ll('envirofacts','epa_facility','longitude','latitude',:srid,:snap);
 
 -- This uses BTS places to locate EPA facilities.
---quote_ident(schemaname) || '.' || quote_ident(tablename);
 select bts.add_and_find_qid('envirofacts.epa_facility','state_code','city_name');
 
 END;

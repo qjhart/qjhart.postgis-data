@@ -4,7 +4,6 @@ drop SCHEMA IF EXISTS forest CASCADE;
 CREATE SCHEMA forest;
 
 SET search_path = forest,public;
-SET default_with_oids = false;
 
 create table feedstock (
 qid varchar(8),
