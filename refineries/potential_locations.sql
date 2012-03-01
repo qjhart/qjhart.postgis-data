@@ -1,4 +1,4 @@
-set search_path=refineries,network,public;
+set search_path=refineries,public;
 
 -- No national sewage data yet.
 -- create or replace view sewage_location as 
@@ -14,33 +14,37 @@ select distinct qid, True as populated
 from bts.place cx where cx.pop_2000 < 100000;
 
 create or replace VIEW refineries.has_railway as 
-select gid,qid, True as railway 
-from bts.place c join bts.place_railwaynode r  
-on (c.gid=r.p_gid);
+select qid, True as railway 
+from bts.place c join bts.rail_nodes r  
+using (qid);
 
 -- Fuel port is currently removed from consideration
 --create or replace VIEW refineries.has_fuel_port as
 --select gid,qid,True as fuel_port 
 --from bts.place p join bts.place_fuel_port fp on (p.gid=fp.p_gid);
 
-create or replace VIEW refineries.has_connected as
+--create or replace VIEW refineries.has_connected as
 --select qid,fuel_port as connected
 --from has_fuel_port
 --union 
-select qid,railway as connected 
-from has_railway;
+--select qid,railway as connected 
+--from has_railway;
 
 create or replace view refineries.has_epa as 
 select distinct qid, True as epa
-from refineries.epa_facility;
+from envirofacts.epa_facility;
 
-create or replace view refineries.has_pulpmill as 
-select distinct qid, True as pulpmill
-from forest.pulpmills;
+create or replace view refineries.has_mill as 
+select distinct qid, True as mill
+from forest.mills;
 
 create or replace view refineries.has_biopower as 
 select distinct qid, True as biopower
-from refineries.biopower_facility;
+from refineries.biopower where state!='CA'
+union
+select distinct qid, True as biopower
+from refineries.caBiopower
+;
 
 create or replace view refineries.has_terminal as 
 select distinct qid, True as terminal
@@ -48,14 +52,14 @@ from refineries.terminals;
 
 create or replace view refineries.has_ethanol as 
 select distinct qid, True as ethanol
-from refineries.ethanol_facility;
+from refineries.ethanol;
 
 create or replace VIEW refineries.has_similar as
 select qid,epa as similar
 from refineries.has_epa
 union
-select qid,pulpmill as similar
-from refineries.has_pulpmill
+select qid,mill as similar
+from refineries.has_mill
 union 
 select qid,biopower as similar
 from refineries.has_biopower
@@ -66,8 +70,8 @@ union
 select qid,terminal as similar
 from refineries.has_terminal;
 
-create or replace VIEW refineries.in_ozone
-select distinct qid,TRUE as in_ozone as 
+create or replace VIEW refineries.in_ozone as 
+select distinct qid,TRUE as in_ozone
 from bts.place p 
 join greenbk.ozone o 
 on st_intersects(p.centroid,o.boundary) where o is not null;
@@ -86,14 +90,25 @@ on st_intersects(p.centroid,o.boundary) where o is not null;
 -- competition?
 
 create or replace view refineries.potential_location as 
-select c.qid,c.connected,f.populated,f.terminal,f.epa,f.biopower,f.ethanol
-from has_connected c join 
+select f.qid,
+coalesce(f.populated,false) as populated,
+coalesce(f.terminal,false) as terminal,
+coalesce(f.epa,false) as epa,
+coalesce(f.biopower,false) as biopower,
+coalesce(f.ethanol,false) as ethanol,
+coalesce(r.railway,false) as railway,
+coalesce(o.in_ozone,false) as o3,
+coalesce(p.in_pm25,false) as pm25
+from
 ( select qid,populated,terminal,epa,biopower,ethanol 
 from  has_populated 
 full outer join has_terminal using (qid)
 full outer join has_epa using (qid)
 full outer join has_biopower using (qid)
-full outer join has_ethanol using (qid) ) as f using (qid);
+full outer join has_ethanol using (qid) ) as f 
+left join has_railway r using (qid)
+left join in_ozone o using(qid)
+left join in_pm25 p using(qid);
 
 -- There are still some that are within 50km, but that's because some potential locations are not so.
 drop table if exists m_potential_location;
@@ -108,7 +123,7 @@ create index m_potential_location_qid on m_potential_location(qid);
 
 -- Proxy locations basically just remove those that are next to each other.
 drop table if exists proxy_location;
-\set proxy_distance 50000
+\set proxy_distance 20000
 --create or replace view  proxy_location as 
 create table  proxy_location as 
 select distinct p1.qid as src_qid,p2.qid as proxy_qid,

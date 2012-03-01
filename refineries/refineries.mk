@@ -4,17 +4,13 @@ ifndef configure.mk
 include ../configure.mk
 endif
 
-ifndef envirofacts.mk
-include ../envirofacts/envirofacts.mk
-endif 
-
 # If included somewhere else
 refineries.mk:=1
 
 INFO::
 	@echo Potential Refinery Locations derived from various data sources.
 
-db:: db/refineries db/refineries.biopower db/refineries.terminals db/refineries.ethanol db/refineries.m_proxy_location
+db:: db/refineries db/refineries.biopower db/refineries.caBiopower db/refineries.terminals db/refineries.ethanol db/refineries.m_proxy_location
 
 db/refineries:
 	${PG} -f refineries.sql
@@ -37,6 +33,15 @@ db/refineries.biopower:db/%:us-biopower-facilities.csv db/refineries
 	${PG} -c "delete from refineries.biopower where state not in ($(subst ${space},${comma},$(patsubst %,'%',${states})))"
 	touch $@
 
+db/refineries.caBiopower: qft:=www.google.com/fusiontables/api/query
+db/refineries.caBiopower: docid:=1KrY-vkqIptJ0-nlMPlLkTsZnA6aK8lNmjy9nkWQ
+db/refineries.caBiopower: sel:=status,name,city,county,longitude,latitude,ptype,MWgross,cogen
+db/refineries.caBiopower:
+	wget -m 'https://${qft}?sql=select+${sel}+from+${docid}' '${qft}?sql=DESCRIBE+${docid}'
+	cat '${qft}?sql=select+${sel}+from+${docid}' | ${PG} -f ca-biopower.sql
+	touch $@
+
+
 #########################################################################
 # Existing ethanol facilities from Antares
 #########################################################################
@@ -52,8 +57,8 @@ db/refineries.ethanol:refineries.ethanol.csv
 # USDA destinations
 ##########################################################################
 # db/network.place_fuel_port db/forest.pulpmills
-db/refineries.m_potential_location db/refineries.m_proxy_location:../envirofacts/db/environfacts.epa_facility db/refineries.ethanol db/refineries.biopower db/refineries.terminals ../bts/db/bts.place_railwaynode db/forest.pulpmills
-	${PG} -f make-db/refineries/potential_locations.sql
+db/refineries.m_potential_location db/refineries.m_proxy_location:../envirofacts/db/envirofacts.epa_facility db/refineries.ethanol db/refineries.biopower db/refineries.terminals ../bts/db/bts.rail_node ../forest/db/forest.mills
+	${PG} -f potential_locations.sql
 	touch db/refineries.m_potential_location db/refineries.m_proxy_location
 
 

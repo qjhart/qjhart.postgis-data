@@ -30,7 +30,6 @@ db/forest.urban: ${down}/forest.urban.csv db/forest
 # Only using continental US
 
 db::db/forest.pulpmills
-pulpmills:db/forest.pulpmills
 
 db/forest.pulpmills:pm:=mill2005p
 db/forest.pulpmills:loc:=www.srs.fs.usda.gov/econ/data/mills
@@ -41,6 +40,23 @@ db/forest.pulpmills:db/%:db/forest
 	${PG} -c 'update $* set centroid=st_snapToGrid(centroid,${snap})'
 	${PG} -c "select * from bts.add_and_find_qid('$*','state','town')";
 	${PG} -c "delete from $* where state not in ($(subst ${space},${comma},$(patsubst %,'%',${states})))"
+	${PG} -c "alter table $* drop column area; alter table $* drop column perimeter;";
 	rm -rf ${pm}.*
+	touch $@
+
+# Only the western US is retrieved here. For a comprehenive set, you'd need to download multiple files.
+db::db/forest.mills
+
+db/forest.mills:m:=mill2005w
+db/forest.mills:loc:=www.srs.fs.usda.gov/econ/data/mills
+db/forest.mills:db/%:db/forest
+	wget -m http://${loc}/${m}.zip
+	unzip -o ${loc}/${m}.zip
+	${shp2pgsql} -d -r 4326 -s ${srid} -S -g centroid -S -I ${m}.shp $* | sed 's/, ${srid}/::geometry, ${srid}/' | ${PG} > /dev/null;
+	${PG} -c 'update $* set centroid=st_snapToGrid(centroid,${snap})'
+	${PG} -c "select * from bts.add_and_find_qid('$*','state','town')";
+	${PG} -c "delete from $* where state not in ($(subst ${space},${comma},$(patsubst %,'%',${states})))"
+	${PG} -c "alter table $* drop column area; alter table $* drop column perimeter;";
+	rm -rf ${m}.*
 	touch $@
 
