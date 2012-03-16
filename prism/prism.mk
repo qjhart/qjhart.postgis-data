@@ -5,6 +5,8 @@ endif
 
 raster2pgsql:=/usr/lib/postgresql/9.1/bin/raster2pgsql.py
 prism.srid:=4322
+prism-dem.srid:=7043
+afri.srid:=97260
 down:=.
 
 years:=$(shell seq 1990 2009)
@@ -31,6 +33,17 @@ endef
 #$(foreach v,tmin tmax ppt,$(foreach d,1920-1929 1930-1939 1940-1949 1950-1959 1960-1969 1970-1979 1980-1989 1990-1999 2000-2009,$(eval $(call download,$v,$d))))
 # Start w/ 20 year average
 $(foreach v,tmin tmax ppt,$(foreach d,1990-1999 2000-2009,$(eval $(call download,$v,$d))))
+
+#PRISM 2.5 Minute DEM metadata http://www.prism.oregonstate.edu/docs/meta/dem_25m.htm#6
+
+demFtp:=/ftp.ncdc.noaa.gov/pub/data/prism100/
+download::${down}${downFtp}us_25m.dem.gz
+
+${down}/ftp.ncdc.noaa.gov/pub/data/prism100/us_25m.dem:
+	cd ${down};\
+	wget -m ftp:/$*.gz
+	gzip -d $*.gz $@
+	rm $<
 
 
 #####################################################################
@@ -103,4 +116,8 @@ db/prism.climate.$1.$2: db/prism.climate $(call prism-fn,tmin,$1,$2) $(call pris
 endef
 
 $(foreach y,${years},$(foreach m,${months},$(eval $(call prism-climate,$y,$m))))
+
+db/prism.dem:
+	$
+
 
