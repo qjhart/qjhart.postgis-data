@@ -117,7 +117,7 @@ endef
 
 $(foreach y,${years},$(foreach m,${months},$(eval $(call prism-climate,$y,$m))))
 
-db/prism.dem:
-	$
+db/us_25m.dem:
+	${raster2pgsql} --filename --raster=${down}${demFtp}$@ -d -s ${prism.srid} --table=prism.dem | ${PG};
 
 
