@@ -1,6 +1,6 @@
 #! /usr/bin/make -f 
 ifndef configure.mk
-include ../configure.mk
+include ../../configure.mk
 endif
 
 raster2pgsql:=/usr/lib/postgresql/9.1/bin/raster2pgsql.py
