@@ -11,7 +11,7 @@ down:=.
 
 
 .PHONY:db
-db:db/prism
+db:db/solar
 	${PG} -f solar.sql
 	touch $@
 
@@ -21,14 +21,14 @@ db:db/prism
 #NREL solar radiation Direct Normal data http://www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/metadata/dni_metadata.htm
 #http://www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/High_Resolution/Lower_48_DNI_High_Resolution.zip
 
-solUrl:=/www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/High_Resolution/
+solUrl:=http://www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/High_Resolution/
 zName:=Lower_48_DNI_High_Resolution.zip
 
-$dniHigh::
-	cd ${down}
-	wget -o $@.log -O $@.zip ${solUrl}/${zName}
-	unzip $@.zip $@
+dniHigh:
+	curl -o $@.zip -v --stderr $@.log ${solUrl}${zName}  
+	unzip -d $@ $@.zip 
 	rm $@.zip
+	${shp2pg}
 
 # ${down}${solUrl}us_25m.dem:
 # 	cd ${down};\
