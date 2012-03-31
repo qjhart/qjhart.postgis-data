@@ -1,15 +1,13 @@
-drop schema prism cascade;
-create schema prism;
-set search_path=prism,public;
+drop schema solar cascade;
+create schema solar;
+set search_path=solar,public;
 
 CREATE TABLE us (
        rid serial PRIMARY KEY,
-       year integer,
-       month integer,
-       unique(year,month)
+       month integer
 );
 
-SELECT AddRasterColumn('prism','us','tmax',4322, ARRAY['32BSI'], 
+SELECT AddRasterColumn('solar','us','',4322, ARRAY['32BSI'], 
        false, false, ARRAY[-9999.0], 0.041666666670000, -0.041666666670000, 
        null, null, null);
 
