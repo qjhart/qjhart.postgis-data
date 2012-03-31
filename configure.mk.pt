@@ -1,0 +1,88 @@
+#! /usr/bin/make  -f
+
+# Database Information.  Make sure that you have your .pgservice_conf
+# and maybe .pgpass specified so you don't neeed to use a password to
+# log into this account.  This doesn't include initializing your
+# database.  You might need to RTFM, but 
+# pgdir:=/usr/share/postgresql/9.1/contrib/postgis-2.0/
+# psql service=${service} -c "create extension plpgsql" 
+# psql service=${service} -f ${pgdir}/postgis.sql
+# for rasters
+#psql service=${service} -f ${pgdir}/rtpostgis.sql
+
+service:=afri
+
+# Projection information.  This is id in the spatial_ref_sys table.
+srid:=97260
+
+# Snap information.  This is used (by some) to snap points to a grid
+snap:=1
+
+# If you are using a non-standard projection, then you need to update
+# this table.  See the rule 'add-spatialref' below for getting that
+# from www.spatialref.org.  If you do that, note that ESRI srids
+# sometimes have an additional 9 prepended.
+#
+#add-spatialref:srid-url:=http://spatialreference.org/ref/sr-org/${srid}/postgis/
+#add-spatialref:
+#	wget -nv -O - ${srid-url} | ${PG}
+
+# states.  Some datasets are ameniable to be limited to a small number
+# of states.  Here use the two letter desingation.  If unset, probably
+# should not do anything.  This is not used always.
+states:=CA NV OR WA ID
+
+#SHELL - Use bash
+SHELL:=/bin/bash
+
+PG:=psql service=${service} --variable=srid=${srid} --variable=snap=${snap}
+
+
+#################################################################
+# Shouldn't need to touch below: Well maybe to find programs.
+#
+#################################################################
+# Verify have read the configuration data
+configure.mk:=1
+
+# standard variables for text
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+
+# For writing CSV files
+PG-CSV:=${PG} -A -F',' --pset footer
+PG-TSV:=${PG} -A -F'	' --pset footer
+
+# Postgis commands.
+shp2pgsql:=shp2pgsql
+pgsql2shp:=pgsql2shp
+
+# ogr for dbf only data since Postgis is screwed up now.
+ogrdsn:=PG:"dbname=${database}"
+ogr_dbf:=ogr2ogr -overwrite -f "PostgreSQL" PG:"dbname=${database}"
+db2kml:=ogr2ogr -overwrite -f KML 
+
+# These are some helper functions you can use in your own makefiles
+define comma-sep
+	$$(subst ${space},${comma},$1)
+endef
+
+# Not yet working
+define csq
+	$$(subst $${space},$${comma},$$(patsubst(%,\'%\',$1)))
+endef
+
+define add_dbf_cmd
+	${PG} -c 'drop table if exists $1 cascade '
+	${ogr_dbf} $2 -nln $1
+	${PG} -c 'alter table $1 rename ogc_fid to gid'
+#	${shp2pgsql} -d -n $2 $1 | ${PG} > /dev/null
+endef
+
+define add_dbf_rule
+db/$1:${down}/$2
+	$(call add_dbf_cmd,$1,${down}/$2)
+	touch db/$1
+endef
+
