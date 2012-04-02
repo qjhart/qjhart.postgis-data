@@ -8,8 +8,8 @@ endif
 envirofacts.mk:=1
 
 # For SIC codes, see http://www.osha.gov/pls/imis/sicsearch.html
-sic_codes:=2011 2013 2041 2046 2074 2075 2076 2077 \
-	   2421 2429 2431 2611 2631 5147
+sic_codes:=2011 2015 2041 2046 2062 2063 2074 2075 2076 2077 2079 \
+	   2421 2429 2431 2611 2631 2911 4221 5171 5159 8731
 
 columns:=
 
