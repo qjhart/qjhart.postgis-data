@@ -16,6 +16,11 @@ syntax: glob
 *.thm
 *.toc
 
+# Download directories
+syntax:glob
+prism/prism.oregonstate.edu*
+national_atlas/edcftp.cr.usgs.gov*
+refineries/www.google.com*
 
 # Don't include db file touches.
 syntax: regexp
