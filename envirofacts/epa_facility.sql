@@ -2,7 +2,7 @@ BEGIN;
 
 set search_path=envirofacts,public;
 
-drop table if exists epa_facility;
+drop table if exists epa_facility cascade;
 
 create table epa_facility (
        gid serial primary key,
