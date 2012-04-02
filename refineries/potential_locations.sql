@@ -9,12 +9,12 @@ create or replace view refineries.has_populated as
 select distinct qid, True as populated
 from bts.place cx where cx.pop_2000>10000 and cx.pop_2000 < 100000;
 
-create or replace view refineries.not_city as 
-select distinct qid, True as populated
-from bts.place cx where cx.pop_2000 < 100000;
+create or replace view refineries.urban as 
+select distinct qid, True as urban
+from bts.place cx where cx.pop_2000 > 100000;
 
 create or replace VIEW refineries.has_railway as 
-select qid, True as railway 
+select distinct qid, True as railway 
 from bts.place c join bts.rail_nodes r  
 using (qid);
 
@@ -43,8 +43,7 @@ select distinct qid, True as biopower
 from refineries.biopower where state!='CA'
 union
 select distinct qid, True as biopower
-from refineries.caBiopower
-;
+from refineries.caBiopower;
 
 create or replace view refineries.has_terminal as 
 select distinct qid, True as terminal
@@ -89,7 +88,7 @@ on st_intersects(p.centroid,o.boundary) where o is not null;
 -- the facilities are cellulosic, we are probably okay to ignore
 -- competition?
 
-create or replace view refineries.potential_location as 
+create or replace view refineries.candidate_location as 
 select f.qid,
 coalesce(f.populated,false) as populated,
 coalesce(f.terminal,false) as terminal,
@@ -98,7 +97,16 @@ coalesce(f.biopower,false) as biopower,
 coalesce(f.ethanol,false) as ethanol,
 coalesce(r.railway,false) as railway,
 coalesce(o.in_ozone,false) as o3,
-coalesce(p.in_pm25,false) as pm25
+coalesce(p.in_pm25,false) as pm25,
+-- Calculate Score
+(case when (f.populated is true) then 10 else 0 end +
+case when (f.terminal is true)  then 10 else 0 end +
+case when (f.epa is true)  then 20 else 0 end +
+case when (f.biopower is true)  then 30 else 0 end +
+case when (f.ethanol is true)  then 30 else 0 end +
+case when (r.railway is true)  then 20 else 0 end +
+case when (o.in_ozone is true)  then -100 else 0 end +
+case when (p.in_pm25 is true)  then -100 else 0 end )::int as score
 from
 ( select qid,populated,terminal,epa,biopower,ethanol 
 from  has_populated 
@@ -106,53 +114,52 @@ full outer join has_terminal using (qid)
 full outer join has_epa using (qid)
 full outer join has_biopower using (qid)
 full outer join has_ethanol using (qid) ) as f 
+left join urban u using (qid) 
 left join has_railway r using (qid)
 left join in_ozone o using(qid)
-left join in_pm25 p using(qid);
+left join in_pm25 p using(qid)
+where urban is not true;
 
--- There are still some that are within 50km, but that's because some potential locations are not so.
-drop table if exists m_potential_location;
-create table m_potential_location 
-as select c.gid,c.centroid,p.* 
-from bts.place c join potential_location p using (qid);
+-- This is very AFRI project dependant.
 
-alter table m_potential_location add constraint m_potential_location_pk primary key(gid);
-create index m_potential_location_centroid_gist on m_potential_location using gist(centroid gist_geometry_ops);
-create index m_potential_location_centroid on m_potential_location(centroid);
-create index m_potential_location_qid on m_potential_location(qid);
+drop table if exists potential_location;
+create table potential_location
+as select p.*,false as is_proxy,
+p.qid as proxy,
+0::int as proxy_score, 
+0::int as proxy_distance,
+c.centroid
+from bts.place c join candidate_location p using (qid)
+join
+( select st_setsrid(st_makebox2d(st_makepoint(west,south),
+                                 st_makepoint(east,north)),srid) as boundary
+ from afri.bounds) as b
+on ( st_within(c.centroid,b.boundary) ) ;
 
--- Proxy locations basically just remove those that are next to each other.
-drop table if exists proxy_location;
-\set proxy_distance 20000
---create or replace view  proxy_location as 
-create table  proxy_location as 
-select distinct p1.qid as src_qid,p2.qid as proxy_qid,
-                c2.pop_2000-c1.pop_2000 as pop_diff
-from m_potential_location p1 
-join bts.place c1 using (qid),
-m_potential_location p2 
-join bts.place c2 using (qid) 
-where p1.qid=p2.qid or  
-      ( ST_Dwithin(c1.centroid,c2.centroid,:proxy_distance)
-        and (    c1.pop_2000 < c2.pop_2000 
-             or (c1.pop_2000=c2.pop_2000 and c1.centroid < c2.centroid)));
+alter table potential_location
+add constraint potential_location_pk primary key(gid);
 
-delete from proxy_location c 
-where pop_diff != (select max(pop_diff) from proxy_location 
-                    where src_qid=c.src_qid);
+create index potential_location_centroid_gist
+  on potential_location using gist(centroid);
+create index potential_location_centroid on potential_location(centroid);
+create index potential_location_qid on potential_location(qid);
 
-delete from proxy_location c 
-where pop_diff = 0 and src_qid <> proxy_qid;
+update potential_location m 
+set proxy=x.p2,proxy_score=x.score,proxy_distance=x.distance 
+from 
+( select p1,p2,min(p2) OVER (partition by p1) as min,score,distance::int
+  from 
+  ( select p1.qid as p1,p2.qid as p2,p2.score,
+      max(p2.score) OVER (partition by p1.qid) as max,
+      st_distance(p1.centroid,p2.centroid) as distance 
+    from potential_location p1 
+    join potential_location p2 
+    on ( (p1=p2) or st_dwithin(p1.centroid,p2.centroid,20000) ) 
+    where p1.score <= p2.score 
+  ) as w 
+  where score=max 
+) as x where x.p2=x.min and m.qid=x.p1;
 
-create index proxy_location_src_qid on proxy_location(src_qid);
-create index proxy_location_proxy_qid on proxy_location(proxy_qid);
-
-drop table if exists m_proxy_location;
-create table m_proxy_location as 
-select c.name,p.* 
-from bts.place c 
-join (select distinct proxy_qid as qid from proxy_location ) as x using (qid) 
-join m_potential_location p using (qid);
-
-alter table m_proxy_location add constraint m_proxy_location_pk primary key(gid);
-create index m_proxy_location_centroid on m_proxy_location(centroid);
+update potential_location m set is_proxy=true 
+from (select distinct proxy from potential_location ) as p 
+where m.qid=p.proxy;
