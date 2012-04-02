@@ -57,8 +57,13 @@ db/refineries.ethanol:refineries.ethanol.csv
 # USDA destinations
 ##########################################################################
 # db/network.place_fuel_port db/forest.pulpmills
-db/refineries.m_potential_location db/refineries.m_proxy_location:../envirofacts/db/envirofacts.epa_facility db/refineries.ethanol db/refineries.biopower db/refineries.terminals ../bts/db/bts.rail_node ../forest/db/forest.mills
+db/refineries.potential_location:../envirofacts/db/envirofacts.epa_facility db/
+refineries.ethanol db/refineries.biopower db/refineries.terminals ../bts/db/bts.rail_node ../forest/db/forest.mills
 	${PG} -f potential_locations.sql
-	touch db/refineries.m_potential_location db/refineries.m_proxy_location
+	touch $@
+
+refineries.potential_location.csv:db/refineries.potential_location
+	${PG} -c '\COPY (select qid,populated,terminal,epa,biopower,ethanol,railway,o3,pm25,score,is_proxy,proxy,proxy_score,proxy_distance,st_asKML(centroid) as centroid from refineries.potential_location) to $@ CSV HEADER'
+
 
 
