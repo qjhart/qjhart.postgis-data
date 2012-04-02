@@ -5,15 +5,14 @@ endif
 
 raster2pgsql:=/usr/lib/postgresql/9.1/bin/raster2pgsql.py
 prism.srid:=4322
-prism-dem.srid:=7043
-afri.srid:=97260
-down:=.
 
 years:=$(shell seq 1990 2009)
 months:=$(shell seq -f %02.0f 1 12)
 
 .PHONY:db
 db:db/prism
+
+db/prism:
 	${PG} -f prism.sql
 	touch $@
 
@@ -23,10 +22,9 @@ db:db/prism
 define download
 
 .PHONY: download
-download::${down}/prism.oregonstate.edu/pub/prism/us/grids/$1/$2
+download::prism.oregonstate.edu/pub/prism/us/grids/$1/$2
 
-${down}/prism.oregonstate.edu/pub/prism/us/grids/$1/$2:
-	cd ${down};\
+prism.oregonstate.edu/pub/prism/us/grids/$1/$2:
 	wget -m ftp://prism.oregonstate.edu/pub/prism/us/grids/$1/$2
 
 endef
@@ -34,17 +32,22 @@ endef
 # Start w/ 20 year average
 $(foreach v,tmin tmax ppt,$(foreach d,1990-1999 2000-2009,$(eval $(call download,$v,$d))))
 
-#PRISM 2.5 Minute DEM metadata http://www.prism.oregonstate.edu/docs/meta/dem_25m.htm#6
+###################################################################
+# Prism Elevation matches prism data
+###################################################################
+dem:=prism.oregonstate.edu/pub/prism/maps/Other/U.S./us_25m.dem.gz
 
-demFtp:=/ftp.ncdc.noaa.gov/pub/data/prism100/
-download::${down}${downFtp}us_25m.dem.gz
+download::${dem}
 
-${down}/ftp.ncdc.noaa.gov/pub/data/prism100/us_25m.dem:
-	cd ${down};\
-	wget -m ftp:/$*.gz
-	gzip -d $*.gz $@
-	rm $<
+${dem}:
+	wget -m ftp://${dem}
 
+db/prism.static:
+	zcat ${dem} > dem
+	${raster2pgsql} --filename --raster=dem -d -s 4322 --table=prism.temp | ${PG};
+	${PG} -c "delete from prism.static where layer='dem'; insert into prism.static (layer,rast) select 'dem',prism.us_to_template(rast,default_rast(),'NearestNeighbor') from prism.temp";
+	[[ -d $(dir $@) ]] || mkdir -p $(dir $@); touch $@
+	rm -f dem
 
 #####################################################################
 # Monthly Mapset files - US data
@@ -77,26 +80,6 @@ db/prism.us/$1.$2: $(call prism-fn,tmin,$1,$2) $(call prism-fn,tmax,$1,$2)  $(ca
 endef
 #$(foreach y,${years},$(foreach m,${months},$(eval $(call prism-us,$y,$m))))
 
-db/prism.pnw:
-	${PG} -c "select prism.new_from_template('prism','pnw',default_rast())";
-	[[ -d $(dir $@) ]] || mkdir -p $(dir $@); touch $@
-
-define prism-pnw
-$(warning prism-pnw $1.$2)
-prism.pnw::db/prism.pnw.$1.$2
-db/prism.pnw.$1.$2: db/prism.pnw $(call prism-fn,tmin,$1,$2) $(call prism-fn,tmax,$1,$2)  $(call prism-fn,ppt,$1,$2) 
-	zcat $(call prism-fn,tmin,$1,$2) > us_tmin_$1.$2
-	zcat $(call prism-fn,tmax,$1,$2) > us_tmax_$1.$2
-	zcat $(call prism-fn,ppt,$1,$2) > us_ppt_$1.$2
-	${raster2pgsql} --filename --raster=us_*_$1.$2 -d -s 4322 --table=prism.temp | ${PG};
-	${PG} -c "delete from prism.pnw where year=$1 and month=$2; insert into prism.pnw (year,month,tmin,tmax,ppt) select $1,$2,prism.us_to_template(tmin.rast,default_rast()),prism.us_to_template(tmax.rast,default_rast()),prism.us_to_template(ppt.rast,default_rast()) from prism.temp tmin,prism.temp tmax,prism.temp ppt where tmin.filename='us_tmin_$1.$2' and tmax.filename='us_tmax_$1.$2' and ppt.filename='us_ppt_$1.$2'";
-	touch $$@
-	rm -f us_*_$1.$2
-
-endef
-
-#$(foreach y,${years},$(foreach m,${months},$(eval $(call prism-pnw,$y,$m))))
-
 db/prism.climate:
 	${PG} -c "select prism.new_from_template('prism','climate',default_rast())";
 	[[ -d $(dir $@) ]] || mkdir -p $(dir $@); touch $@
@@ -117,8 +100,9 @@ endef
 
 $(foreach y,${years},$(foreach m,${months},$(eval $(call prism-climate,$y,$m))))
 
-db/us_25m.dem:
-	${raster2pgsql} --filename --raster=${down}${demFtp}$@ -d -s ${prism.srid} --table=prism.dem | ${PG};
-	touch $@
+# This creates monthly averages on a number of time scales;
+prism.avg::db/prism.avg
 
-
+db/prism.avg:
+	${PG} -c "set search_path=prism,public; select * from create_avg();"
+	touch $@;
