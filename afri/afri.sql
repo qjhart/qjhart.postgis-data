@@ -38,7 +38,8 @@ from bounds b,
 where bound_id=1;
 
 create view pixel_bounds as 
-select name,size,x,y,st_asKML(st_pixelAsPolygon(rast,x,y)) as pixel
+select name,size,x,y,st_pixelAsPolygon(rast,x,y) as boundary, 
+            st_asKML(st_pixelAsPolygon(rast,x,y)) as kml
 from 
 (select name,size,generate_series(1,st_width(r.rast)) as x
  from raster_templates r ) as x
@@ -50,3 +51,14 @@ using (name,size)
 join raster_templates r 
 using (name,size);
 
+-- materialize one set of pixels
+create table pixels_8km as 
+select name,size,x,y
+from pixel_bounds
+where size=8192 limit 0;
+select addGeometryColumn('afri','pixels_8km','boundary',:srid,'POLYGON',2);
+
+insert into pixels_8km (name,size,x,y,boundary)
+select name,size,x,y,boundary
+from pixel_bounds
+where size=8192;
