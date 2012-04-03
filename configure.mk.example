@@ -37,6 +37,10 @@ SHELL:=/bin/bash
 
 PG:=psql service=${service} --variable=srid=${srid} --variable=snap=${snap}
 
+# This is still not configured properly.  At least, I don't know a
+# good way to do this genericly.
+public_rast:
+	@echo "You need to have a function, public.default_rast() which returns a raster that can be used as a template for default raster creation".
 
 #################################################################
 # Shouldn't need to touch below: Well maybe to find programs.
@@ -64,6 +68,14 @@ ogr_dbf:=ogr2ogr -overwrite -f "PostgreSQL" PG:"dbname=${database}"
 db2kml:=ogr2ogr -overwrite -f KML 
 
 # These are some helper functions you can use in your own makefiles
+define comma-sep
+	$$(subst ${space},${comma},$1)
+endef
+
+# Not yet working
+define csq
+	$$(subst $${space},$${comma},$$(patsubst(%,\'%\',$1)))
+endef
 
 define add_dbf_cmd
 	${PG} -c 'drop table if exists $1 cascade '
