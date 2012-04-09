@@ -30,11 +30,13 @@ bound_id,name,exp,east,south,west,north
 --false,true,'{0}',4096,-4096, integer (b.east-b.west)/, 
 --integer blocksize_y, bounds.bb);
 
+--TODO raster_templates has 
 create table raster_templates as 
-select bound_id,name,s.s as size,
+select bound_id, sc.sc as scale_id, name,s.s as size,
 st_asRaster(b.bb,-1.0*s.s,1.0*s.s,'1BB') as rast 
 from bounds b,
-(select unnest(ARRAY[2^11,2^12,2^13,2^14,2^15,2^16]) as s) as s 
+(select unnest(ARRAY[2^11,2^12,2^13,2^14,2^15,2^16]) as s) as s ,
+(select * from generate_series(0,5) as sc) as sc
 where bound_id=1;
 
 create view pixel_bounds as 
