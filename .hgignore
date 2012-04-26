@@ -1,0 +1,27 @@
+syntax: glob
+*~
+
+syntax: regexp
+(.*/)?\#[^/]*\#$
+
+syntax: glob
+*.zip
+*.DS_Store
+*.aux
+*.bbl
+*.blg
+*.brf
+*.log
+*.out
+*.thm
+*.toc
+
+# Download directories
+syntax:glob
+prism/prism.oregonstate.edu*
+national_atlas/edcftp.cr.usgs.gov*
+refineries/www.google.com*
+
+# Don't include db file touches.
+syntax: regexp
+(.*/)db(/.*)
