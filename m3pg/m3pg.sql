@@ -2,6 +2,15 @@ drop schema m3pg cascade;
 create schema m3pg;
 set search_path=m3pg,public;
 
+%
+% Solar Interception
+%
+create or replace function m3pg.gross_canopy_production(Qo float, k float, L float, out Qint) AS 
+$$
+
+$$ LANGUAGE 'plpgsql';
+
+
 create table soil_class (
        soil_class_id integer,
        class varchar(6) primary key,
