@@ -64,3 +64,5 @@ insert into pixels_8km (name,size,x,y,boundary)
 select name,size,x,y,boundary
 from pixel_bounds
 where size=8192;
+
+create index pixels_8km_boundary_gist on pixels_8km using gist(boundary);
