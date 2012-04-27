@@ -15,8 +15,11 @@ syntax: glob
 *.out
 *.thm
 *.toc
+*.pyc
+*~
 
 # Download directories
+# Whynot just exclude the data? (*.shp, etc.)
 syntax:glob
 prism/prism.oregonstate.edu*
 national_atlas/edcftp.cr.usgs.gov*
