@@ -7,5 +7,11 @@ create table solar.metadata(
 	     t_name varchar(150),
 	     meta xml
 );
--- early attemps at creating the raster version
--- select st_setValue(rast) from (select st_band()
+
+create table solar.pnw_solar(
+       	     sid serial primary key,
+	     pid integer references afri.pixels(pid),
+	     ghi_name varchar(128),
+	     ghi_wavg float,
+	     rast raster
+);

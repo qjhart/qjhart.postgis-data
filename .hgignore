@@ -15,18 +15,16 @@ syntax: glob
 *.out
 *.thm
 *.toc
+*.pyc
+*~
 
 # Download directories
+# Whynot just exclude the data? (*.shp, etc.)
 syntax:glob
 prism/prism.oregonstate.edu*
 national_atlas/edcftp.cr.usgs.gov*
 refineries/www.google.com*
-statsgo/gsmsoil_us*
-m3pg/www.fsl.orst.edu*
 
 # Don't include db file touches.
 syntax: regexp
 (.*/)db(/.*)
-
-# Don't inlude grassdirs (gdb)
-(.*/)gdb(/.*)
