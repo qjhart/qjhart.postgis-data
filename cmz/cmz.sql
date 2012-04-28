@@ -14,5 +14,3 @@ create table cmz.path(
        p_desc varchar(24)
 );
 
--- early attemps at creating the raster version
--- select st_setValue(rast) from (select st_band()
