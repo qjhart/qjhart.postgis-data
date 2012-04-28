@@ -1,18 +1,13 @@
-# -*- coding: utf-8 -*-
-from osgeo import gdal, ogr, osr
+from osgeo import ogr
+import sys
 
-#Reproject source 4326 to 26910
-drv=ogr.GetDriverByName("ESRI Shapefile")
-shpf=drv.Open("../solar/dniHigh/dniHigh_pnw.shp")
-lyr0=shpf.GetLayerByIndex(0)
-srsIn=osr.SpatialReference()
-srsOut=osr.SpatialReference()
-srsIn.CopyGeogCSFrom(lyr0.GetSpatialRef())
-srsOut.ImportFromEPSG(26910)
-trans=osr.CoordinateTransformation(srsIn,srsOut)
-
-
-for ft in range(lyr0.GetFeatureCount()):
-    feat=lyr0.GetFeature(ft)
-    geom=feat.GetGeometryRef()
-    geom.Transform(trans)
+def getSR(shapeFID, dr_type='ESRI Shapefile'):
+    drv=ogr.GetDriverByName(dr_type)
+    ds=drv.Open(shapeFID)
+    if ds is None:
+        print "Open failed.\n"
+        sys.exit(1)
+    lyr=ds.GetLayer(0)
+    sr=lyr.GetSpatialRef()
+    out={'projcs': [sr.GetAuthorityName('PROJCS'), sr.GetAuthorityCode('PROJCS')], 'geogcs': [sr.GetAuthorityName('GEOGCS'), sr.GetAuthorityCode('GEOGCS')], 'proj4': sr.ExportToProj4()}
+    return out
