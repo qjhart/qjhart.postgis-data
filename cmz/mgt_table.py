@@ -5,8 +5,8 @@ import db, gdal_utilities as gd, utils
 tempfile.tempdir='.'
     
 zones=db.query('select distinct cmz from cmz_pnw', 'cmz')
-url='%s'%sys.argv[1]
-#'ftp://fargo.nserl.purdue.edu/pub/RUSLE2/Crop_Management_Templates/%s.zip'
+#url='%s'%sys.argv[1]
+url='ftp://fargo.nserl.purdue.edu/pub/RUSLE2/Crop_Management_Templates/%s.zip'
 
 
 ###################################

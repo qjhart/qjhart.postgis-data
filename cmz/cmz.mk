@@ -40,8 +40,9 @@ db/managements:db/cmz db/cmz_bounds
 	python mgt_table.py ${dbUrl}
 	python managements.py ${dbUrl}
 	for d in tmp*/*.gdb; do	\
-	  echo -e '.mode insert\nselect * from managements;' | sqlite "$$d" | sed s/table/cmz.managements/|${PG} ;\
+	  echo -e '.mode insert\nselect * from managements;' | sqlite "$$d" | sed s/table/cmz.managements/ |${PG} ;\
 	done
+	${PG} -c "set search_path=cmz; alter table managements add column cmz varchar(255);update managements set cmz=substring from (select distinct substring(path,'CMZ...') from managements) foo where substring(path,'CMZ...')=foo.substring;"
 	rm -r tmp*
 	touch $@
 
