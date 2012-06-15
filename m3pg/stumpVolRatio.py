@@ -50,7 +50,8 @@ tParams=np.array((params('Beaupre'),params('Luisa Avanzo')))
 a,b,c=[np.average(tParams[:,i]) for i in range(len(tParams[0]))]
 
 #Set stump height
-#sH=sys.argv[1]
+msPath='../../poplar_manuscript/'
+#=sys.argv[1]
 sH=10.0 #cm
 
 #Wood density
@@ -61,7 +62,7 @@ def pltLine(xlab,ylab,data,fname):
     plt.ylabel(ylab)
     #plt.title(title)            
     plt.plot(data,'k')
-    plt.savefig('graph/%s.png'%fname)
+    plt.savefig(msPath+'%s.png'%fname)
     
 
 
@@ -95,8 +96,8 @@ nm='nlm_stump'
 
 pltLine(xlb,ylb,dt,nm)
 
-doc=open('stumpVol.tex','w')
-doc.write('\\subsubsection{Stump volume}\n\\label{sec:allo}\nFirst, $dbh$ is calculated from tree mass $M$\n')
+doc=open(msPath+'stumpVol.tex','w')
+doc.write('\\subsubsection*{Stump volume}\n\\label{sec:allo}\nFirst, $dbh$ is calculated from tree mass $M$\n')
 doc.write(TxEqn('dbh=aM^b','dbh'))
 doc.write('as in (\\ref{eqn:form}) where $a=%s$ and $b=%s$ from \\cite{Landsberg1997}.\n'%(getDBH(8)[1],getDBH(8)[2]))
 doc.write('We the calculate total tree height ($H$) using coefficients provided by \\cite{Brahim2000}\n')
@@ -106,8 +107,8 @@ doc.write(TxEqn(r'0=-d+\left(b_d-b_d\left(\frac{\log{\frac{1-h}{Ha}}}{-b}\right)
 doc.write('The taper equation provided by \\citeauthor{Benbrahim2003} also requires a basal diameter ($b_d$). We calculate $b_d$ modifying equation (\\ref{eqn:taper}) using coefficients provided and $H$, $dbh$ from above. Using a stump height of %s cm we calculate the top stump diameter with whihc we can calculate the stump volume.\n'%sH)
 doc.write(TxEqn(secVol(12,14)['tex'],'sectionvolume'))
 doc.write('We then calculate stump mass using a wood density of %s %s and compare with total tree mass $M$'%(density['alder'][0],density['alder'][1]))
-doc.write('\n\\subsubsection{Stump volume regression}\n')
-doc.write('To determine a simplified relationship between tree volume and stump volume we derive coefficients $a$ and $b$ in (\\ref{eqn:form}) using a the ratio of stump mas to total stem mass over a range of stem volumes based on the allometric relationships in section \\ref{sec:allo}.')
+doc.write('\n\\subsubsection*{Stump volume regression}\n')
+doc.write('To determine a simplified relationship between tree volume and stump volume we derive coefficients $a$ and $b$ in (\\ref{eqn:form}) using a the ratio of stump mass to total stem mass over a range of stem volumes based on the allometric relationships in section \\ref{sec:allo}.')
 doc.write(TxFig(nm+'.png',caption='Stump to stem volume ratio as a function of stem volume', label='stump_vol'))
 doc.write('Coefficients used in calculating stump volume as a function of total stem volume were found to be $a=%s$ and $b=%s$.'%(af,bf))  
 
