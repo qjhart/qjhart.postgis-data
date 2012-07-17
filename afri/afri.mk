@@ -13,4 +13,3 @@ db/afri:
 
 pixels.tsv:
 	${PG-TSV} -c "set search_path=afri,public; select * from pixel_bounds where name='afri' and size in (65536)" > $@
-

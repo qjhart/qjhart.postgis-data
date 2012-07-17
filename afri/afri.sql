@@ -1,6 +1,6 @@
 drop schema afri cascade;
 create schema afri;
-set search_path=afri,public;
+set search_path=afri,public, national_altas;
 
 create table bounds (
 bound_id serial primary key,
@@ -72,5 +72,3 @@ create index pixels_8km_boundary_gist on pixels_8km using gist(boundary);
 create or replace view afri.afri_pbound as 
        select st_setsrid(st_extent(boundary),97260) as geom 
        from pixels;
-
-
