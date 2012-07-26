@@ -18,9 +18,9 @@ create table cmz.cmz_cnty as select
        	     b.state_fips,
 	     b.fips, 
        	     c.gid,
-       	     st_intersection(b.boundary, c.geom) as geom 
+       	     st_intersection(b.boundary, c.geom) as geom
        from county b, cmz_pnw c 
-       where st_intersects(c.geom, b.boundary)
+       where st_intersects(c.geom, b.boundary) 
 ;
 alter table cmz.cmz_cnty
       add ccid serial primary key
