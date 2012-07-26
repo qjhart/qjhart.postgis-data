@@ -1,3 +1,10 @@
+drop schema b_loc cascade;
+create schema b_loc;
+set search_path=b_loc, refineries,national_atlas,public;
+
+comment on schema b_loc is 'testing schema for biorefinery revised locating method created by PWT';
+
+
 set search_path=refineries,public;
 
 -- No national sewage data yet.
@@ -5,13 +12,13 @@ set search_path=refineries,public;
 -- select qid, True as sewage 
 -- from city_parameters p  where p.parameter='sewage';
 
-create or replace view refineries.has_populated as 
+create or replace view  b_loc.has_populated as 
 select distinct qid, True as populated
-from bts.place cx where cx.pop_2000>10000 and cx.pop_2000 < 100000;
+from bts.place cx where cx.pop_2000>100 and cx.pop_2000 < 100000;
 
-create or replace view refineries.urban as 
-select distinct qid, True as urban
-from bts.place cx where cx.pop_2000 > 100000;
+-- create or replace view refineries.urban as 
+-- select distinct qid, True as urban
+-- from bts.place cx where cx.pop_2000 > 100000;
 
 create or replace VIEW refineries.has_railway as 
 select distinct qid, True as railway 
