@@ -4,60 +4,71 @@ ifndef configure.mk
 include ../configure.mk
 endif
 
+#URL for national FRS shapefile which does not contain NAICS/SIC codes
+nationalShp:=http://www.epa.gov/enviro/html/frs_demo/geospatial_data/EPAShapefileDownload.zip
+
+# EPA url for state "Combined" files which have a SIC, NAICS and 
+stCbUrl:=http://www.epa.gov/enviro/html/frs_demo/geospatial_data/state_files/state_combined_
+
 # If included somewhere else
 envirofacts.mk:=1
 
+states:=CA WA OR ID MT
+sp:=
+sp+=
+stq:= $(patsubst %,'%',${states})
+stQ:=$(subst ${sp},${comma},${stq})
+
+
+
 # For SIC codes, see http://www.osha.gov/pls/imis/sicsearch.html
-sic_codes:=2011 2015 2041 2046 2062 2063 2074 2075 2076 2077 2079 \
-	   2421 2429 2431 2611 2631 2911 4221 5171 5159 8731
+sic_codes:=2011 2015 2041 2046 2062 2063 2074 2075 2076 2077 2079 2421 2429 2431 2611 2631 2911 4221 5171 5159 8731
+sicC:=$(subst ${sp},${comma},${sic_codes})
 
-columns:=
+install: db/sic_naics db/frs_naics getData db/epaSites
 
-space:=
-space+=
-comma:=,
-
-# We create an SQL call to collect all the EPA facility types for a
-# set of SIC Codes and states.  You can replicate this by going to
-# http://www.epa.gov/enviro/html/fii/ez.html, and then to 'EPA
-# Facility Latitude and Longitude Information Categorized by SIC
-# CODE'.  You still need to copy the output by hand:(
-
-# This is the table we use
-table:=V_LRT_EF_COVERAGE_SRC_SIC_EZ
-
-# These are the columns.  It's a pain to figure them out.
-cols:=PGM_SYS_ACRNM FACILITY_NAME REGISTRY_ID SIC_CODE CITY_NAME COUNTY_NAME STATE_CODE BVFLAG LATITUDE LONGITUDE ACCURACY_VALUE
-
-#cols:=CODE_DESCRIPTION FACILITY_NAME REGISTRY_ID SIC_CODE PRIMARY_INDICATOR COUNTY_NAME STATE_CODE LATITUDE LONGITUDE
-
-# For the ones we need to select by add here:
-SIC_CODE-in:=$(subst ${space},%2C,${sic_codes})
-STATE_CODE-in:=$(subst ${space},%2C,${states})
-
-col-defs:=$(foreach p,${cols},table_1=${table}.$p&table1_type=In&table1_value=${$p-in}&column_number=&sort_selection=&sort_order=Ascending)
-
-url:=http://oaspub.epa.gov/enviro/ez_build_sql2.get_table?database_type=LRT&where_selection=dummy
-url-footer:=group_sequence=test&showsql=true&csv_output=Output+to+CSV+File
-
-INFO::
-	@echo EPA EnviroFacts Facility Registration System
-	@echo $(subst ${space},${comma},${sic_codes})
-	@echo $(subst ${space},${comma},${states})
-	@echo '${url}&$(subst ${space},&,${col-defs})&${url-footer}'
-
-.PHONY:db
-db::db/envirofacts db/envirofacts.epa_facility
-
-db/envirofacts:
-	${PG} -f envirofacts.sql
+db/sic_naics:db/frs_naics
+	curl -o xwalk.zip http://www.census.gov/epcd/ec97brdg/E97B_DBF.zip
+	unzip xwalk.zip -x E97B1.DBF
+	psql service=afri -c "drop table if exists envirofacts.ic_xwalk" 
+	shp2pgsql -n E97B2.DBF envirofacts.ic_xwalk | psql service=afri
+	psql service=afri -c "comment on table envirofacts.ic_xwalk is 'crosswalk table from us census bureau for determining NAICS 2007 code from 1997 SIC. There is a current (2012) NAICS which hopefully doesnt diverge significantly from 2007 codes'"
+	psql service=afri -c "alter table envirofacts.ic_xwalk add column sic_code int; update envirofacts.ic_xwalk set sic_code=btrim(sic::text,foo::text)::int from (select string_agg(distinct(substring(sic,1,1)),'') from envirofacts.ic_xwalk) foo where btrim(sic::text,foo::text)<>''"
+	rm *.DBF
+	rm xwalk.zip
 	touch $@
 
-epa_facility.csv:
-	@echo Please go to the following URL in your browser, then copy the output csv file to epa_facility.csv.
-	@echo '${url}&$(subst ${space},&,${col-defs})&${url-footer}'
-
-db/envirofacts.epa_facility:db/%:db/envirofacts epa_facility.csv ../bts/db/bts.place
-	${PG} -f epa_facility.sql
+#create the table for NAICS codes by reg_id
+db/frs_naics:
+	psql service=afri -f envirofacts.sql
 	touch $@
 
+
+#Get frs spatial data
+db/epaSites: db/frs_naics
+	mkdir $@
+	curl -o  $@/sites.zip ${nationalShp}
+	unzip $@/sites.zip -d $@
+	shp2pgsql -W LATIN1 -s '4269:97260' $@/*.shp envirofacts.us_frs |\
+	psql service=afri
+	psql service=afri -c "set search_path=envirofacts, public; delete from us_frs where loc_state not in (${stQ});create index us_frs_gist on envirofacts.us_frs using GIST(the_geom); comment on table us_frs is 'this table contains spatial data from all the EPA FRS locations in ${states}'";
+	rm -r $@
+	touch $@
+
+
+define naics_frs
+getData::db/frs.$1
+db/frs.$1: db/frs_naics db/epaSites
+	psql service=afri -c "set search_path=public, envirofacts; delete from epa_naics using us_frs where epa_naics.reg_id=us_frs.reg_id and us_frs.loc_state='$1' " 
+	mkdir frs_$1
+	curl -o frs_$1/$1.zip ${stCbUrl}$(shell echo $1 | tr A-Z a-z).zip
+	unzip -p  frs_$1/$1.zip $1_NAICS_FILE.CSV |\
+	psql -c "copy envirofacts.epa_naics from stdin with csv header" service=afri 
+	touch $$@
+	rm -r frs_$1
+endef
+
+$(foreach s,${states},$(eval $(call naics_frs,$s))) 
+
+db/views:db/frs_naics  db/sic_naics db/epaSites getData
+	psql service=afri -v codes=${sicC} -f env_views.sql
