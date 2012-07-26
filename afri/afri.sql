@@ -15,7 +15,7 @@ north integer
 
 create function bb (bounds)
 returns geometry AS
-$$ select setsrid(st_makebox2d(st_makepoint(west,south),
+$$ select st_setsrid(st_makebox2d(st_makepoint(west,south),
                   st_makepoint(east,north)),srid) from bounds;
 $$ LANGUAGE SQL;
 
@@ -31,12 +31,13 @@ bound_id,name,exp,east,south,west,north
 --integer blocksize_y, bounds.bb);
 
 --TODO raster_templates has 
+--(select unnest(ARRAY[2^11,2^12,2^13,2^14,2^15,2^16]) as s) as s ,
+
 create table raster_templates as 
-select bound_id, sc.sc as scale_id, name,s.s as size,
-st_asRaster(b.bb,-1.0*s.s,1.0*s.s,'1BB') as rast 
+select bound_id, sc.sc as scale_id, name,2^sc.sc as size,
+st_asRaster(b.bb,-1.0*2^sc.sc,1.0*2^sc.sc,'1BB') as rast 
 from bounds b,
-(select unnest(ARRAY[2^11,2^12,2^13,2^14,2^15,2^16]) as s) as s ,
-(select * from generate_series(0,5) as sc) as sc
+(select * from generate_series(11,16) as sc) as sc
 where bound_id=1;
 
 create view pixel_bounds as 
@@ -54,23 +55,22 @@ join raster_templates r
 using (name,size);
 
 -- materialize one set of pixels
-create table pixels_8km as 
-select name,size,x,y
+create table pixels as 
+select name,size,x,y,
+st_x(st_centroid(boundary)) as east,st_y(st_centroid(boundary)) as north
 from pixel_bounds
-where size=8192 limit 0;
-select addGeometryColumn('afri','pixels_8km','boundary',:srid,'POLYGON',2);
+limit 0;
+alter table pixels add pid serial primary key;
+select addGeometryColumn('afri','pixels','boundary',:srid,'POLYGON',2);
 
-insert into pixels_8km (name,size,x,y,boundary)
-select name,size,x,y,boundary
-from pixel_bounds
-where size=8192;
+insert into pixels (name,size,x,y,east,north,boundary)
+select name,size,x,y,
+st_x(st_centroid(boundary)) as east,st_y(st_centroid(boundary)) as north,
+boundary
+from pixel_bounds;
 
-create index pixels_8km_boundary_gist on pixels_8km using gist(boundary);
+create index pixels_boundary_gist on pixels using gist(boundary);
 
---create a simple project boundary
-
-create or replace view afri.afri_pbound as 
-       select st_setsrid(st_extent(boundary),97260) as geom 
-       from pixels;
-
+create view pixels_8km as 
+select * from pixels where size=8192;
 

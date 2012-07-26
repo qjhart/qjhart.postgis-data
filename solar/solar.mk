@@ -19,6 +19,7 @@ db/solar:
 # Download all files:
 #####################################################################
 #NREL solar radiation Global Horizontal data http://www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/metadata/ghi_metadata.htm
+# Wh/m2/day
 #http://www.nrel.gov/gis/cfm/data/GIS_Data_Technology_Specific/United_States/Solar/High_Resolution/Lower_48_GHI_High_Resolution.zip
 
 #

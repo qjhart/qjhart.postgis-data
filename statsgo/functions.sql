@@ -1,7 +1,6 @@
 -- for field capacity depth in cm, but values are in %, so the
 -- conversion to mm is *10/100
-
-create or replace function comp_awc (depth float)
+create or replace function comp_awc_via_horizon (depth float)
 RETURNS TABLE (cokey varchar(30),awc_mm float,field_capacity_mm float)
 as
 $$
@@ -24,7 +23,8 @@ select cokey,
  group by cokey;
 $$ LANGUAGE SQL;
 
-create or replace function mapunit_awc(depth float)
+
+create or replace function mapunit_awc_via_horizon(depth float)
 RETURNS TABLE (mukey varchar(30),awc_mm float,field_capacity_mm float)
 as 
 $$
@@ -40,12 +40,10 @@ RETURNS TABLE (chkey varchar(30), cokey varchar(30),depth float,class varchar(8)
 as
 $$
 select cokey,chkey,
- (CASE WHEN (hzdepb_r<$1)
-       THEN hzdepb_r
-       ELSE $1 END
-   -hzdept_r) as depth_cm,
-   soil_class((sandtotal_r,silttotal_r,claytotal_r)::SaSiCl) as class
+ CASE WHEN ( hzdepb_r < $1 )
+       THEN hzdepb_r - hzdept_r
+       ELSE $1 - hzdept_r END as depth_cm,
+   statsgo.soil_class((sandtotal_r,silttotal_r,claytotal_r)::m3pg.SaSiCl) as class
  from statsgo.chorizon
- where sandtotal_r+silttotal_r+claytotal_r=100 
- hzdept_r < $1 
+ where sandtotal_r+silttotal_r+claytotal_r=100 and hzdept_r < $1 
 $$ LANGUAGE SQL;
