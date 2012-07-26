@@ -74,3 +74,6 @@ create index pixels_boundary_gist on pixels using gist(boundary);
 create view pixels_8km as 
 select * from pixels where size=8192;
 
+create or replace view afri.afri_pbound as 
+       select st_setsrid(st_extent(boundary),97260) as geom 
+       from pixels;
