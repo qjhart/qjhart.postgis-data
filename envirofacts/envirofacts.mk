@@ -74,4 +74,4 @@ db/views:db/frs_naics  db/sic_naics db/epaSites getData
 	psql service=afri -v codes=${sicC} -f env_views.sql
 
 target_codes.tex: db/sic_naics  db/frs_naics  db/sic_naics db/epaSites getData
-	psql -c '\pset --format=latex select sic, naics, name' > $@
+	psql service=afri --pset format=latex --pset footer -c 'set search_path=envirofacts; select distinct naics "NAICS code", text "Description", count "Count" from pnw_target_frs join ic_xwalk on (naics_code=naics::real) join (select naics_code bar, count(*) from pnw_target_frs group by naics_code) foo on (naics::real=foo.bar);' > $@
