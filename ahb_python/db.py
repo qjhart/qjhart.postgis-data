@@ -1,9 +1,7 @@
-import psycopg2, sqlite
+import psycopg2
 
-
-
-def query(string, search_path='afri, solar, public'):
-    con = psycopg2.connect("dbname=afri")
+def query(string, dbname='afri',search_path='afri, solar, public'):
+    con = psycopg2.connect("dbname=%s"%dbname)
     sp='set search_path=%s;'%search_path
     stWpath= sp+string
     curs=con.cursor()
@@ -17,8 +15,8 @@ def query(string, search_path='afri, solar, public'):
     curs.close()
     return res
 
-def queryCommit(string, search_path='afri, solar, public'):
-    con = psycopg2.connect("dbname=afri")
+def queryCommit(string, dbname='afri',search_path='afri, solar, public'):
+    con = psycopg2.connect("dbname=%s"%dbname)
     sp='set search_path=%s;'%search_path
     stWpath= sp+string
     curs=con.cursor()
@@ -38,6 +36,7 @@ def sqliteQ(string,filename):
     string= query string
     filename= string file name
     '''
+    import sqlite
     con=sqlite.connect(filename)
     c= con.cursor()
     #c.execute()
@@ -52,6 +51,7 @@ def sqliteQcommit(string,filename):
     string= query string
     filename= string file name
     '''
+    import sqlite
     con=sqlite.connect(filename)
     c= con.cursor()
     c.execute(string)

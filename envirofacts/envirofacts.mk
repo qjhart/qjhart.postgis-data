@@ -72,3 +72,6 @@ $(foreach s,${states},$(eval $(call naics_frs,$s)))
 
 db/views:db/frs_naics  db/sic_naics db/epaSites getData
 	psql service=afri -v codes=${sicC} -f env_views.sql
+
+target_codes.tex: db/sic_naics  db/frs_naics  db/sic_naics db/epaSites getData
+	psql -c '\pset --format=latex select sic, naics, name' > $@

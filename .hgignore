@@ -17,6 +17,8 @@ syntax: glob
 *.toc
 *.pyc
 *~
+*.spyderproject
+*.spyderworkspace
 
 # Download directories
 # Whynot just exclude the data? (*.shp, etc.)
