@@ -1,4 +1,4 @@
-import os, zipfile as zp, urllib, csv
+import os, zipfile as zp, urllib, csv, numpy.average as avg, numpy.std as std
 
 
 def is_number(s):
@@ -28,3 +28,13 @@ def extractZip (URL,DIR):
 #     create= 'create table %s.%s (%s);'
 #     for f in dict.fieldnames:
         
+def stanardScore(ind,raw,ar):
+    '''
+    ind -- the index of the array of raw scores. 
+    raw -- the index of arr for which the standard score in arr is desired
+    arr -- is a numpy array
+    ######
+    returns the standard score $\frac{x-\mu}{\sigma}$
+    '''
+    return (raw[ind]-avg(ar))/std(ar)
+         
