@@ -4,7 +4,7 @@ Created on Tue Jul 24 11:25:00 2012
 This implements a mean shift clustering approach to
 @author: peter
 """
-import numpy as np, sys
+import numpy as np, sys 
 sys.path.append('../ahb_python')
 import db
 from sklearn.cluster import MeanShift, estimate_bandwidth
@@ -19,7 +19,7 @@ caFRS=np.array(db.query("select ogc_fid,\
 
 coords=np.column_stack((caFRS['x'],caFRS['y']))
 #bw=estimate_bandwidth(coords)
-bw_m=2*1609.34
+bw_m=2500 #2.5 km
 ms=MeanShift(bw_m)
 ft=ms.fit(coords)
 
