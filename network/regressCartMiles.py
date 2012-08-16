@@ -18,16 +18,19 @@ FROM <table_id>
 
 @author: peter
 """
-import urllib, json, numpy as np, pandas as pd
+import numpy as np, sys 
+sys.path.append('../ahb_python')
+import utils
 
-baseUrl='https://www.googleapis.com/fusiontables/v1/%s'
-apiKey='AIzaSyDv-8N5AOJZgw6UcVZ7l0SMa1Ko7vdY6xo'
-tUrl=baseUrl%'query?sql=%s'
-tab='1-3DE0kCMOD7faWRxCIPwOyPLZRvZFgsIa2oyyHg'
-sel='select src_qid, dest_qid, cost, road_mi, cart_miles from %s limit 10&key=%s'%(tab,apiKey)
+# import urllib, json, numpy as np, pandas as pd
 
-#get table schema
+# baseUrl='https://www.googleapis.com/fusiontables/v1/%s'
+# tUrl=baseUrl%'query?sql=%s'
+# tab='1-3DE0kCMOD7faWRxCIPwOyPLZRvZFgsIa2oyyHg'
+# sel='select src_qid, dest_qid, cost, road_mi, cart_miles from %s limit 10&key=%s'%(tab,apiKey)
 
-#get JSON data
-m=urllib.urlopen(tUrl%sel)
-js=json.load(m)
+# #get table schema
+
+# #get JSON data
+# m=urllib.urlopen(tUrl%sel)
+# js=json.load(m)

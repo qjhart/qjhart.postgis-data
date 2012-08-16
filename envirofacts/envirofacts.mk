@@ -18,14 +18,19 @@ sp:=
 sp+=
 stq:= $(patsubst %,'%',${states})
 stQ:=$(subst ${sp},${comma},${stq})
+naicsFTable:=15Ap8GIBLDXKRGcS1KGARt-awXWSTJbxh2VPtqSw
 
+naics:= $(shell python -c "import sys, numpy as np; sys.path.append('../ahb_python'); import utils; print utils.fusionQuery(table='${naicsFTable}',query='select naics_code_2012')[0].to_string(index=False, header=False).replace('\n',',')")
 
 
 # For SIC codes, see http://www.osha.gov/pls/imis/sicsearch.html
+# ALERT!!!! SIC code usage is deprecated. We now use the list of codes in http://goo.gl/1NstR
 sic_codes:=2011 2015 2041 2046 2062 2063 2074 2075 2076 2077 2079 2421 2429 2431 2611 2631 2911 4221 5171 5159 8731
 sicC:=$(subst ${sp},${comma},${sic_codes})
 
+
 install: db/sic_naics db/frs_naics getData db/epaSites
+
 
 db/sic_naics:db/frs_naics
 	curl -o xwalk.zip http://www.census.gov/epcd/ec97brdg/E97B_DBF.zip
@@ -55,7 +60,6 @@ db/epaSites: db/frs_naics
 	rm -r $@
 	touch $@
 
-
 define naics_frs
 getData::db/frs.$1
 db/frs.$1: db/frs_naics db/epaSites
@@ -71,7 +75,7 @@ endef
 $(foreach s,${states},$(eval $(call naics_frs,$s))) 
 
 db/views:db/frs_naics  db/sic_naics db/epaSites getData
-	psql service=afri -v codes=${sicC} -f env_views.sql
+	psql service=afri -v codes='${naics}' -v srid='${srid}' -f env_views.sql
 
 target_codes.tex: db/sic_naics  db/frs_naics  db/sic_naics db/epaSites getData
 	psql service=afri --pset format=latex --pset footer -c 'set search_path=envirofacts; select distinct naics "NAICS code", text "Description", count "Count" from pnw_target_frs join ic_xwalk on (naics_code=naics::real) join (select naics_code bar, count(*) from pnw_target_frs group by naics_code) foo on (naics::real=foo.bar);' > $@
