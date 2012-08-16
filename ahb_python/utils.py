@@ -1,4 +1,6 @@
-import os, zipfile as zp, urllib, csv, numpy.average as avg, numpy.std as std
+import os, zipfile as zp, urllib, csv, json, pandas as pd
+from numpy import average as avg
+from numpy import std as std
 
 
 def is_number(s):
@@ -21,6 +23,7 @@ def extractZip (URL,DIR):
     return [zf.extract(zf.namelist()[i],DIR) for i in range(len(zf.namelist()))]
     
 # For a future moment....
+# pandas may be relevant to this, good data loading and column typing capabilities
 # def csvtosql(dict, table_name, schema='public'):
 #     '''
 #     pass a csv.DictReader object so we dont need to deal with filenames
@@ -37,4 +40,45 @@ def stanardScore(ind,raw,ar):
     returns the standard score $\frac{x-\mu}{\sigma}$
     '''
     return (raw[ind]-avg(ar))/std(ar)
-         
+
+def fusionQuery (table, query, apikey='AIzaSyDv-8N5AOJZgw6UcVZ7l0SMa1Ko7vdY6xo'):
+    '''
+    Parameters
+    ----------
+    apikey: the fusion table api key
+    table: google table locator
+    query: fusion table sql
+
+    Returns
+    -------
+    list containing 2 items.
+    [0]: is a pandas DataFrame contiaing the results of the query.
+    [1]: is a list of column names.
+    '''
+    baseUrl='https://www.googleapis.com/fusiontables/v1/%s'
+    QK='query?sql=%s from %s&key=%s'%(query,table,apikey)
+    js=json.load(urllib.urlopen(baseUrl%QK))
+    return [pd.DataFrame(js['rows']), js['columns']]
+
+## this funtion is not complete
+def fusionMod (table, query, apikey='AIzaSyDv-8N5AOJZgw6UcVZ7l0SMa1Ko7vdY6xo'):
+    '''
+    Parameters
+    ----------
+    apikey: the fusion table api key
+    table: google table locator
+    query: fusion table sql without from clause
+
+    Returns
+    -------
+    list containing 2 items.
+    [0]: is a pandas DataFrame contiaing the results of the query.
+    [1]: is a list of column names.
+    '''
+    baseUrl='https://www.googleapis.com/fusiontables/v1/%s'
+    QK='query?sql=%s from %s&key=%s'%(query,table,apikey)
+    js=json.load(urllib.urlopen(baseUrl%QK))
+    return [pd.DataFrame(js['rows']), js['columns']]
+
+    
+    

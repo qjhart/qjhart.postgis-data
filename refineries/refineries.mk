@@ -7,6 +7,21 @@ endif
 # If included somewhere else
 refineries.mk:=1
 
+
+
+db/cluster_cities:
+	python -c "import potential_locations;\
+		bw_m=2500;\
+		ms=MeanShift(bw_m);\
+		popMin=100;\
+		cp=db.query('select qid, st_x(centroid), st_y(centroid) from place, afri_pbound  where pop_2000>%s and geom ~ centroid;'%popMin, search_path='afri,bts, public');\
+		placsDf=pd.DataFrame(cp);\
+		clusterPoints(placsDf,bw_m,'city_cluster');"
+	touch $@
+
+
+
+
 INFO::
 	@echo Potential Refinery Locations derived from various data sources.
 

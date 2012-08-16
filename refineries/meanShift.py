@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul 24 11:25:00 2012
-This implements a mean shift clustering approach to
+This implements a mean shift clustering approach for use in reduging redundancy in the potential biorefienry locations dataset
 @author: peter
 """
 import numpy as np, sys 
