@@ -1,7 +1,7 @@
 import os, zipfile as zp, urllib, csv, json, pandas as pd
 from numpy import average as avg
 from numpy import std as std
-
+from numpy import floor, ceil
 
 def is_number(s):
     try:
@@ -31,7 +31,7 @@ def extractZip (URL,DIR):
 #     create= 'create table %s.%s (%s);'
 #     for f in dict.fieldnames:
         
-def stanardScore(ind,raw,ar):
+def standardScore(ind,raw,ar):
     '''
     ind -- the index of the array of raw scores. 
     raw -- the index of arr for which the standard score in arr is desired
@@ -80,5 +80,55 @@ def fusionMod (table, query, apikey='AIzaSyDv-8N5AOJZgw6UcVZ7l0SMa1Ko7vdY6xo'):
     js=json.load(urllib.urlopen(baseUrl%QK))
     return [pd.DataFrame(js['rows']), js['columns']]
 
+
+class railCost:
+    """
+    Class can be used to calculate the costs of constructing rail spurs. The inputs are derived from the State of Michigan SUBDIVISION DEVELOPMENT COSTS SECTION UIP 16 available at http://www.michigan.gov/documents/Vol2-40UIP16SubDevCosts-YardCosts-Demolition_121083_7.pdf.
+    Costs calculation include scaling based upon rail weight and icludes costs fro interconnection, road crossings, bumpers, and wheel stops.  
+    """
+    costs={'weight':[40,60,80,100,115,130,'lbs/ft'],\
+           'minlc':[49.5,62.5,73.75,84.25,91.5,98.25,'$/ft'],\
+           'maxlc':[62.75,78.25,91.75,103.5,111.75,119.5,'$/ft'],\
+           'mincross':[17250,21000,24250,27000,29500,31750,'$'],\
+           'maxcross':[22000,26000,30500,34250,36750,39500,'$']}
+
+    bumperCost=3550
+    crossingSignals=1295
+    #concrete roadbed cost is currently not used in this class but is referenced in the report.
+    concreteRoadbed=[85,'$/ft'] 
+    crossingTimbers=300
+    wheelStopCost=835
     
+    def linecost(self,length,railWeight):
+        """
+        length is the line length in feet
+        railWeight must be one of the following 40,60,80,100,115,130 in lbs/ft
+        """
+        d=self.costs['weight'].index(railWeight)
+        return (length*avg([self.costs[i][d] for i in ['minlc','maxlc']]))+ avg([self.costs[i][d] for i in ['mincross','maxcross']])
+
+    def lengthFactoredCost(self,length,railWeight):
+        """
+        calcualtes the length dependent cost scaling for lengths <> 500 ft.
+        length is the line length in feet
+        railWeight must be one of the following 40,60,80,100,115,130 in lbs/ft
+        """
+        lc=self.linecost(length,railWeight)
+        maxDed=0.25*lc
+        if length <= 500:
+            incPct=ceil(length/100)*0.02
+            return lc+(lc*incPct)
+        else:
+            dedPct=floor((length-500)/100)*0.02
+            return max([maxDed, lc-(lc*dedPct)])
+
+    def railSpurCost(self,length, crossings=0, bumpers=0,railWeight=80, wheelStops=4):
+        d=self.costs['weight'].index(railWeight)
+        bc=bumpers*self.bumperCost
+        cc=crossings*self.crossingSignals
+        wsc=wheelStops*self.wheelStopCost
+        lineCost=self.lengthFactoredCost(length,railWeight)
+        additional=bc+cc+wsc
+        return {'total':[additional+lineCost, 'total spur construction cost'], 'lnCon':[lineCost,'distance dependent cost plus mainline connection'], 'unitItems':{'bumpers':bc,'crossingSignals':cc,'wheelStops':wsc}}
+
     
