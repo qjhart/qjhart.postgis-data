@@ -39,7 +39,7 @@ def linkClst(ft, orig, schema, name, id_pos=0):
     id_pos: is the row identity to link source table primary id to cluster label, default is 0
     '''
     drop='drop table if exists %s.%s cascade'%(schema,name)
-    create='create table %s.%s (id varchar(128), clabel int)'%(schema,name)
+    create='create table %s.%s (gid varchar(128), clabel int)'%(schema,name)
     [db.queryCommit(q, search_path='public, %s'%schema) for q in [drop,create]]
     insert='insert into %s values(\'%s\', %s)'
     for r in range(len(ft.labels_)):
@@ -71,6 +71,8 @@ def clusterPoints(df, bw, table_name, schema='refineries',pos=[1,2]):
     print '%s table created with %s rows'%(cTabNam[1],lRows[0])
 
     
+
+
 # ##cluster places > 100 pop
 # popMin=100
 # cp=db.query('select qid, st_x(centroid), st_y(centroid) from place, afri_pbound  where pop_2000>%s and geom ~ centroid;'%popMin, search_path='afri,bts, public')
