@@ -5,8 +5,8 @@ include m3pg.mk
 endif
 
 INFO::
-	echo ${doys}
-	echo ${j.sshas}
+	echo ${m.mapsets}
+	echo ${m.sshas}
 
 # NREL Solar radiation
 nrel.loc:=${GISDBASE}/nrel
@@ -30,32 +30,37 @@ ${nrel.nrel}:${nrel.loc}/%/cellhd/nrel:
 	r.in.xyz --overwrite fs=',' input=- output=nrel;
 
 
-j.sshas:=$(patsubst %,%/cellhd/ssha,${j.mapsets})
+m.sshas:=$(patsubst %,%/cellhd/ssha,${m.mapsets})
 
 .PHONY:ssha
-ssha:${j.sshas}
+ssha:${m.sshas}
 
-${j.sshas}:${m3pg.loc}/%/cellhd/ssha:${m3pg.loc}/%
+${m.sshas}:${m3pg.loc}/%/cellhd/ssha:${m3pg.loc}/%
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
 	r.solpos date=$(shell date --date='2011-12-31 + $(subst j,,$*) days' +%F) ssha=ssha;
 
-j.nrels:=$(patsubst %,%/cellhd/nrel,${j.mapsets})
+m.nrels:=$(patsubst %,%/cellhd/nrel,${m.mapsets})
 
 .PHONY:nrel
-nrel:${j.nrels}
+nrel:${m.nrels}
 
-${j.nrels}:${m3pg.loc}/%/cellhd/nrel:${nrel.loc}/%/cellhd/nrel
-	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
+define from_nrel
+${m3pg.loc}/$1/cellhd/nrel:${nrel.loc}/$2/cellhd/nrel
+	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$1; \
 	g.region rast=Z@m3pg; \
-	r.proj --overwrite method=cubic location=nrel mapset=$* input=nrel
+	r.proj --overwrite method=cubic location=nrel mapset=$2 input=nrel
+
+endef
+
+$(foreach m,${months},$(eval $(call from_nrel,$m,j${m.${m}.j})))
 
 # FAO Rso Calculations
-j.Rsos:=$(patsubst %,%/cellhd/Rso,${j.mapsets})
+m.Rsos:=$(patsubst %,%/cellhd/Rso,${m.mapsets})
 .PHONY:Rso
-Rso:${j.Rsos}
+Rso:${m.Rsos}
 
-${j.Rsos}:${m3pg.loc}/%/cellhd/Rso:
+${m.Rsos}:${m3pg.loc}/%/cellhd/Rso:
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
         eval `r.solpos -r date=$(shell date --date='2011-12-31 + $(subst j,,$*) days' +%F)`; \
@@ -64,27 +69,46 @@ ${j.Rsos}:${m3pg.loc}/%/cellhd/Rso:
         +cos(Z.lat@m3pg)*cos($$declin)*sin(ssha))"
 
 # r.sun calculations
-j.beams:=$(patsubst %,%/cellhd/beam,${j.mapsets})
+m.beams:=$(patsubst %,%/cellhd/beam,${m.mapsets})
 
 .PHONY:beam
-beam:${j.beams}
+beam:${m.beams}
 
-${j.beams}:${m3pg.loc}/%/cellhd/beam:
+${m.beams}:${m3pg.loc}/%/cellhd/beam:
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
 	r.sun --overwrite day=$(subst j,,$*) glob_rad=global beam_rad=beam diff_rad=diffuse elevin=Z@m3pg lin=0
 
-j.Ks:=$(patsubst %,%/cellhd/K,${j.mapsets})
+m.Ks:=$(patsubst %,%/cellhd/K,${m.mapsets})
 
 .PHONY:K
-K:${j.Ks}
+K:${m.Ks}
 
-${j.Ks}:${m3pg.loc}/%/cellhd/K:${m3pg.loc}/%/cellhd/global ${m3pg.loc}/%/cellhd/nrel ${m3pg.loc}/%/cellhd/Rso
+${m.Ks}:${m3pg.loc}/%/cellhd/K:${m3pg.loc}/%/cellhd/global ${m3pg.loc}/%/cellhd/nrel ${m3pg.loc}/%/cellhd/Rso
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
 	r.mapcalc K=nrel/global; \
 	r.mapcalc K.Rso=nrel/Rso;
 
+#  Assimiliation use Efficiency
+y:= 0.47
+#'conversion of mol to gDM
+gDM_mol := 24
+#'conversion of MJ to PAR mols
+molPAR_MJ := 2.3
+
+m.xPPs:=$(patsubst %,%/cellhd/xPP,${m.mapsets})
+
+.PHONY:xPP
+xPP:${m.xPPs}
+
+${m.xPPs}:${m3pg.loc}/%/cellhd/xPP:${m3pg.loc}/%/cellhd/nrel
+	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
+	g.region rast=Z@m3pg; \
+	r.mapcalc PAR=nrel*0.0036*30.4*${molPAR_MJ}
+	r.support map=PAR units=mols title='Monthly PAR in mols / m^2 month' 
+	r.mapcalc xPP=${y}*PAR*${gDM_mol}/100; # 10000/10^6 [ha/m2][tDm/gDM] 
+	r.support map=xPP units='metric tons Dry Matter/ha' title='maximum potential Primary Production [tDM / ha month]' 
 
 .PHONY:Z.lat
 Z.lat:${rast}/Z.lat
