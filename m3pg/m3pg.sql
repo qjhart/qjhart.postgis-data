@@ -222,18 +222,19 @@ join cmz.cmz_pnw c on (st_intersects(p.boundary,c.geom));
 create table m3pg.cmz_pixel_fraction_m as 
 select * from m3pg.cmz_pixel_fraction;
 
-create or replace view m3pg.county_pixel_fraction as 
-select p.pid,c.county_gid,
-(st_area(st_intersection(p.boundary,c.boundary))/size^2) as fraction 
-from afri.pixels p 
+create or replace view m3pg.county_pixel_fraction as
+select p.pid,c.county_gid,c.fips,
+(st_area(st_intersection(p.boundary,c.boundary))/size^2) as fraction
+from afri.pixels p
 join national_atlas.county c on (st_intersects(p.boundary,c.boundary));
+
 
 create table m3pg.county_pixel_fraction_m as 
 select * from m3pg.county_pixel_fraction;
 
 create or replace view m3pg.model_county as
-select state,county,fraction from (
-select state,replace(name,' County','') as county,
+select county_gid,fips,state,county,fraction from (
+select county_gid,fips,state,replace(name,' County','') as county,
 hectares/(st_area(c.boundary)/10000) as fraction 
 from m3pg.county_area ca 
 join national_atlas.county c using (county_gid) 

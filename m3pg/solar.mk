@@ -1,8 +1,9 @@
 #! /usr/bin/make -f
 
-ifndef m3pg.mk
-include m3pg.mk
-endif
+
+#ifndef m3pg.mk
+#include m3pg.mk
+#endif
 
 INFO::
 	echo ${m.mapsets}
@@ -21,6 +22,7 @@ ${nrel.loc}/annual/cellhd/nrel:
 	g.region -d; \
 	${PG-CSV} -t -c 'select lon,lat,ghiann from solar.l48_ghi_10km;' | \
 	r.in.xyz --overwrite fs=',' input=- output=nrel;
+	r.support map=nrel units='Wh/m2/day' title='Annual Total Solar GHI' 
 
 
 ${nrel.nrel}:${nrel.loc}/%/cellhd/nrel:
@@ -28,7 +30,7 @@ ${nrel.nrel}:${nrel.loc}/%/cellhd/nrel:
 	g.region -d; \
 	${PG-CSV} -t -c 'select lon,lat,ghi${$*.m} from solar.l48_ghi_10km;' | \
 	r.in.xyz --overwrite fs=',' input=- output=nrel;
-
+	r.support map=nrel units='Wh/m2/day' title='Monthly Total Solar Resource GHI' 
 
 m.sshas:=$(patsubst %,%/cellhd/ssha,${m.mapsets})
 
@@ -38,7 +40,32 @@ ssha:${m.sshas}
 ${m.sshas}:${m3pg.loc}/%/cellhd/ssha:${m3pg.loc}/%
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
-	r.solpos date=$(shell date --date='2011-12-31 + $(subst j,,$*) days' +%F) ssha=ssha;
+	r.solpos date=${m.$(subst XXXX-,,$*).date} ssha=ssha;
+
+m.sretrs:=$(patsubst %,%/cellhd/sretr,${m.mapsets})
+
+${m.sretrs}:${m3pg.loc}/%/cellhd/sretr:
+	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
+	g.region rast=Z@m3pg; \
+	r.solpos date=${m.$(subst XXXX-,,$*).date} sretr=sretr;
+
+m.ssetrs:=$(patsubst %,%/cellhd/ssetr,${m.mapsets})
+
+${m.ssetrs}:${m3pg.loc}/%/cellhd/ssetr:
+	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
+	g.region rast=Z@m3pg; \
+	r.solpos date=${m.$(subst XXXX-,,$*).date} ssetr=ssetr;
+
+m.daylights:=$(patsubst %,%/cellhd/daylight,${m.mapsets})
+
+.PHONY:daylight
+daylight:${m.daylights}
+
+${m.daylights}:${m3pg.loc}/%/cellhd/daylight:${m3pg.loc}/%/cellhd/sretr ${m3pg.loc}/%/cellhd/ssetr 
+	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
+	g.region rast=Z@m3pg; \
+	r.mapcalc daylight='(ssetr-sretr)/60';\
+	r.support map=daylight units='hrs/day' title='Number of daylight hours'
 
 m.nrels:=$(patsubst %,%/cellhd/nrel,${m.mapsets})
 
@@ -108,7 +135,7 @@ ${m.xPPs}:${m3pg.loc}/%/cellhd/xPP:${m3pg.loc}/%/cellhd/nrel
 	r.mapcalc PAR=nrel*0.0036*30.4*${molPAR_MJ}
 	r.support map=PAR units=mols title='Monthly PAR in mols / m^2 month' 
 	r.mapcalc xPP=${y}*PAR*${gDM_mol}/100; # 10000/10^6 [ha/m2][tDm/gDM] 
-	r.support map=xPP units='metric tons Dry Matter/ha' title='maximum potential Primary Production [tDM / ha month]' 
+	r.support map=xPP units='metric tons Dry Matter/ha' title='maximum potential Primary Production [tDM / ha month]'
 
 .PHONY:Z.lat
 Z.lat:${rast}/Z.lat
