@@ -66,6 +66,10 @@ db/r_locations: db/hasProxy
 	${PG} -c "set search_path= afri, public, refineries,cmz; copy (select pid pxid, st_x(st_centroid(boundary)) src_lat ,st_y(st_centroid(boundary)) src_lon, st_askml(st_centroid(boundary)) src_kml, clabel ref_cluster, st_x(r.geom) dest_lat, st_y(r.geom) dest_lon, st_askml(r.geom) dest_kml, st_askml(st_makeline(st_centroid(boundary),r.geom)) link from pixels , cmz_pnw c cross join r_locations r where size=8192 and st_intersects(c.geom, boundary) and cmz='CMZ 34') to '$@' with csv header "
 
 # this table contains the siting costs in this analysis: rail spur construction, air control technologies..
+db/real_estate:
+	${PG} -c "drop table if exists real_estate; create table real_estate (uid serial primary key, city varchar (128), state varchar(128), year int, salemin int, salemax int, acremin real, acremax real, json text);"
+	${PG} -c "SELECT AddGeometryColumn ('real_estate','geom',97260,'POINT',2, false);)"
+	python 
 db/if_costs:
 	${PG} -c "set search_path= refineries; drop table if exists ${ifCost}; create table ${ifCost} (cid serial primary key, gid int; type varchar(128), railcost real; )"
 	 

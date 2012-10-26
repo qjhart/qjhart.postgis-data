@@ -98,6 +98,7 @@ class railCost:
     concreteRoadbed=[85,'$/ft'] 
     crossingTimbers=300
     wheelStopCost=835
+    landAcqCost=[]
     
     def linecost(self,length,railWeight):
         """
@@ -107,6 +108,12 @@ class railCost:
         d=self.costs['weight'].index(railWeight)
         return (length*avg([self.costs[i][d] for i in ['minlc','maxlc']]))+ avg([self.costs[i][d] for i in ['mincross','maxcross']])
 
+    def landCost(length, easementWidth=100, quartile=1):
+        priceRange={'min':0.008953168044077135,'max':3.019995408631772,'unit':'$/sqft', 'source':"@article{941205325419941001,Abstract = {Presents a sequel to the article `Rail Corridor Markets and Sales Factors.' Procedures for estimating the value of land of a rail corridor; Purpose and function of the appraisal; Physical inspection; Sectionalizing of the corridor; Highest and best use; Land sales; Summary of ATF prices; Additional studies.},Author = {Zoll, Clifford A.},ISSN = {00037087},Journal = {Appraisal Journal},Keywords = {REAL property -- Valuation},Number = {4},Pages = {621},Title = {Rail corridor markets and sales factors: Revisited.},Volume = {62}, URL = {http://search.ebscohost.com/login.aspx?direct=true&db=f5h&AN=9412053254&site=ehost-live}, Year = {1994},}"}
+        inflationPct=0.44069673310471597
+        cost=priceRange['min']+(quartile*((priceRange['max']-priceRange['min'])/4))
+        return {'landcost':length*easementWidth*cost,'citation':priceRange['source']}
+        
     def lengthFactoredCost(self,length,railWeight):
         """
         calcualtes the length dependent cost scaling for lengths <> 500 ft.
@@ -131,4 +138,3 @@ class railCost:
         additional=bc+cc+wsc
         return {'total':[additional+lineCost, 'total spur construction cost'], 'lnCon':[lineCost,'distance dependent cost plus mainline connection'], 'unitItems':{'bumpers':bc,'crossingSignals':cc,'wheelStops':wsc}}
 
-    
