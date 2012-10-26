@@ -14,5 +14,13 @@ cdl_nass.csv:gcsv:=https://docs.google.com/spreadsheet/ccc?key=0AmgH34NLQLU-dHRZ
 cdl_nass.csv:
 	wget -O $@ '${gcsv}'
 
+
+cmz34.csv:gcsv:=https://docs.google.com/a/ucdavis.edu/spreadsheet/ccc?key=0AgN3B21vEtMFdFJNZkR0d2w0aWdjTU55Sk9faUdpY1E&single=true&gid=0&output=csv
+cmz34.csv:
+	wget -O $@ '${gcsv}'
+
+
 db/to_bcam: cdl_nass.csv
-	${PG} --variable=cdl_nass_csv="'${pwd}/cdl_nass.csv'" -f to_bcam.sql
+	${PG} --variable=cdl_nass_csv="'${pwd}/cdl_nass.csv'" --variable=cmz34_csv="'${pwd}/cmz34.csv'" --variable=category_parms_csv="'${pwd}/category_parms.csv'" -f to_bcam.sql
+
+
