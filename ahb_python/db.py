@@ -1,4 +1,5 @@
 import psycopg2
+from sqlalchemy import schema, create_engine, Table, Column, MetaData
 
 def query(string, dbname='afri',search_path='afri, solar, public'):
     con = psycopg2.connect("dbname=%s"%dbname)
@@ -57,3 +58,13 @@ def sqliteQcommit(string,filename):
     c.execute(string)
     con.commit
     c.close()
+
+class schemaText():
+    def dump(sql,*multiparams, **params):
+        print sql.compile(dialect=engine.dialect)
+    metadata=MetaData()
+    table=Table()
+    engine=create_engine('postgresql://', strategy='mock', executor=dump)
+    def out():
+        return self.metadata.create_all(self.engine, checkfirst=False)
+    
