@@ -15,9 +15,9 @@ schema:=refineries
 # Minimum population
 mPop:=100
 # Mean Shift bandwidth
-bw:=16000
+bw:=5000
 #threshhold to replace urban with frs
-th:=10000
+th:=20000
 #target cmz
 cmz:=34
 #fusion table ID for CMZ 34 potential locations
@@ -32,7 +32,7 @@ db/industrial:
 #create real estate value table from LoopNet Data.
 db/realEstate: 
 	${PG} -c "set search_path=${schema}, public;\
-		 drop table if exists ${schema}.real_estate; create table refineries.real_estate (city text, state text, year int, salemin real, salemax real, acremin real, acremax real, json text);\
+		 drop table if exists ${schema}.real_estate; create table refineries.real_estate (city text, state text, year int, acres real, salemin real, salemax real, acremin real, acremax real, json text);\
 		select addgeometrycolumn('${schema}','real_estate','geom',97260,'POINT',2);" 
 	python realEstate.py 
 	touch $@
@@ -73,11 +73,6 @@ db/r_locations: db/hasProxy
 /tmp/cmz${cmz}_odpairs.csv: db/r_locations
 	${PG} -c "set search_path= afri, public, ${schema},cmz; copy (select pid pxid, st_x(st_centroid(boundary)) src_lat ,st_y(st_centroid(boundary)) src_lon, st_askml(st_centroid(boundary)) src_kml, clabel ref_cluster, st_x(r.geom) dest_lat, st_y(r.geom) dest_lon, st_askml(r.geom) dest_kml, st_askml(st_makeline(st_centroid(boundary),r.geom)) link from pixels , cmz_pnw c cross join r_locations r where size=8192 and st_intersects(c.geom, boundary) and cmz='CMZ 34') to '$@' with csv header "
 
-# this table contains the siting costs in this analysis: rail spur construction, air control technologies..
-db/real_estate:
-	${PG} -c "drop table if exists real_estate; create table real_estate (uid serial primary key, city varchar (128), state varchar(128), year int, salemin int, salemax int, acremin real, acremax real, json text);"
-	${PG} -c "SELECT AddGeometryColumn ('real_estate','geom',97260,'POINT',2, false);)"
-	python 
+# this table contains the siting costs in this analysis: rail spur construction, air control technologies..db/real_estate:
 db/if_costs:
-	${PG} -c "set search_path= ${schema}; drop table if exists ${ifCost}; create table ${ifCost} (cid serial primary key, gid int; type varchar(128), railcost real; )"
-	 
+	${PG} -c "set search_path= ${schema}; drop table if exists ${ifCost}; create table ${ifCost} (cid serial primary key, gid int; type varchar(128), railcost real, ; )"

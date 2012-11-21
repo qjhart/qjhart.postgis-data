@@ -25,8 +25,8 @@ loc=tDir+"/loopNet/%s.html"
 geocodeUrl="http://maps.googleapis.com/maps/api/geocode/json?address=%s+%s&sensor=false"
 
 ### needs to be a table to recieve the data ###
-insertData="insert into real_estate (city,state,year,salemin,salemax,acremin,acremax,json,geom)\
-            values ('%s','%s',%s,%s,%s,%s,%s,$$%s$$,\
+insertData="insert into real_estate (city,state,year,acres,salemin,salemax,acremin,acremax,json,geom)\
+            values ('%s','%s',%s,%s,%s,%s,%s,%s,$$%s$$,\
             st_transform(st_setsrid(st_makepoint(%s,%s),4326),97260))"
 
 
@@ -65,10 +65,14 @@ for p in pages:
             if sibs[0].string != None:
                 acreRange=[float(i) for i in sibs[0].string.replace('$','').replace('/Acre','').replace(',','').split('-')]
             date=int(r.h2.children.next().split(' ')[2])
+            try:
+                acres=float(r.parents.next().ul.find_all('li')[1].string.split(' ')[0])
+            except:
+                acres="NaN"
             js=checkQueryOverload(geocodeUrl%(city,state),15)
             graticule=['lat','lng']
             lat,lng=[js['results'][0]['geometry']['location'][i] for i in graticule]
-            db.queryCommit(insertData%(city,state,date,salePriceRange[0],\
+            db.queryCommit(insertData%(city,state,date,acres,salePriceRange[0],\
             salePriceRange[1], acreRange[0],acreRange[1],js,lng,lat), search_path='public, refineries')
     print 'completed scraping data from page '+str(p) +' of 25'
 
