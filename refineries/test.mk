@@ -23,6 +23,13 @@ cmz:=34
 #fusion table ID for CMZ 34 potential locations
 cmz34:=1U2BV1Gyfr4w35ukWjQmq4KsgQx6gcL7-GIHwFJI
 
+#collect data from Google Places API
+db/gQuery:
+	${PG} -c 'set search_path=${schema}, public; drop table if exists ${schema}.g_mill_query cascade; create table ${schema}.g_mill_query (qid serial primary key, name text, keyw text ARRAY, search_str text, jsn text, fmt_addr text);'
+	${PG} -c "select addgeometrycolumn('${schema}','g_mill_query','geom', ${srid},'POINT',2)"
+	python gPlacesQuery.py g_mill_query ${srid}
+	touch $@
+
 #collect location information from EPA FRS, Antares biopower, Antares ethanol, USFS wood mills, USFS pulp mills, California Biopower into one view for clustering 
 db/industrial:
 	${PG} -c "set search_path=${schema}, public, envirofacts, forest; create or replace view ${schema}.industrial_locations as select gid,'biopower' as type ,centroid from biopower union select gid,'ethanol',centroid from ethanol union select gid,'cabiopower', centroid from cabiopower union select gid,'mills',centroid from mills union select gid,'pulpmills',centroid from pulpmills union select gid,'us_frs', geom from pnw_target_frs;"

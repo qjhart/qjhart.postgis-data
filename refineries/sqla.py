@@ -2,8 +2,12 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import *
 from geoalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import *
 
-metadata=MetaData(schema='refineries')
+engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
+Session = sessionmaker(bind=engine)
+session = Session()
+metadata=MetaData(engine, schema='refineries')
 
 Base=declarative_base(metadata)
 
