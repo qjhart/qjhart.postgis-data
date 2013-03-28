@@ -1,5 +1,5 @@
---drop schema to_bcam cascade;
---create schema to_bcam;
+drop schema to_bcam cascade;
+create schema to_bcam;
 set search_path=to_bcam,public;
 
 create foreign table cdl_nass (
@@ -17,7 +17,7 @@ water float
 )
 SERVER file_fdw_server 
 OPTIONS (format 'csv', header 'true', 
-filename :category_parms,
+filename :category_parms_csv,
 delimiter ',',quote '"',null '');
 
 create temp table nass_of_interest as 
@@ -133,7 +133,7 @@ join cmz.cmz_pnw z using (gid);
 
 create table to_bcam.ccid_nass_production as 
 select cc.ccid,fips,z.cmz,na.state,commodity,year,
-acres,acres_bearing,acres_harvested,arces_in_production,
+acres,acres_bearing,acres_harvested,acres_in_production,
 acres_non_bearing,acres_not_harvested,production
 from 
 (select ccid,commodity,year,unit,
@@ -147,7 +147,7 @@ sum(production*fraction) as production
 from nass_production 
 join pixel_county_cdl_fraction using (fips,cat_id)
 join m3pg.cmz_pixel_best_8km using (pid)
-join cmz.cmz_cnty using (fips,)
+join cmz.cmz_cnty using (fips,gid) -- Added GID 
 group by ccid,commodity,year,unit) as cc
 join cmz.cmz_cnty using (ccid)
 join national_atlas.county na using (fips)
