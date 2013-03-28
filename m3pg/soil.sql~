@@ -1,0 +1,16 @@
+create table m3pg.pixel_mukey as 
+select pid,mukey,
+sum(st_area(st_intersection(p.boundary,s.boundary)))/st_area(p.boundary) as fraction
+from afri.pixels p 
+join statsgo.map_unit_poly s 
+on (st_intersects(p.boundary,s.boundary)) 
+where p.size=8192 group by pid,mukey;
+
+create view m3pg.pixel_maxAWS as 
+select pid,fs/sum(fs) OVER (partition by pid) as maxAWS from 
+(
+ select pid,sum(aws0100wta*fraction) as fs
+ from m3pg.pixel_mukey join statsgo.muaggatt 
+ using (mukey) where aws0100wta is not null group by pid 
+) as a;
+
