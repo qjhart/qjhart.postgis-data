@@ -9,23 +9,28 @@ endif
 m3pg.mk:=1
 
 #Coefficients in monthly litterfall rate
+#gammaFx := 0.03
+#gammaF0 := 0.001
+#tgammaF := 24
+#Rttover:= 0.015
 gammaFx := 0.03
 gammaF0 := 0.001
 tgammaF := 24
-Rttover:= 0.015
-#y:= 0.47 #  Assimiliation use Efficiency
+Rttover := 0.005
+
 #gDM_mol := 24         #'conversion of mol to gDM
 #molPAR_MJ := 2.3      #'conversion of MJ to PAR
 k:= 0.5
-# Not specified
-fullCanAge:=4
+
 # Poplar Specific parameters for 3PG
+fullCanAge:=0
 poplar.kG:=0.5 
+poplar.alpha:=0.0177
 # /kPa  0.05 in BAS but mBar?
 # id'd as 1.9 or 2.5 in original paper.
 #Critical" biological temperatures: max, min and optimum. Reset if necessary/appropriate
-Tmax := 32
-Tmin := 2
+Tmax := 40
+Tmin := 5
 Topt := 20
 
 BLcond := 0.2         #Canopy boundary layer conductance, assumed constant
@@ -37,36 +42,50 @@ nAge:=4
 fN0:=1
 FR:=0.7
 
-SLA0:=2
-SLA1:=4
-tSLA:=2.5
+SLA0:=10.8
+SLA1:=10.8
+tSLA:=1
 
 MaxCond:=0.02
 LAIgcx:=3.33
 
-e20:=2.2
-rhoAir:=1.2
-lambda:=246000
-VPDconv:=0.000622
-#intercept of net v. solar radiation relationship (W/m2)
-Qa := -90
+MaxIntcptn:= 0.15    #Max proportion of rainfall intercepted by canopy
+LAImaxIntcptn:= 0    #LAI required for maximum rainfall interception
+
+e20:=2.2 #dimensionless
+rhoAir:=1.2 #kgm-3
+lambda:=2460000 #Jkg-1
+VPDconv:=0.00622 # 18 g/mol (h20) / 28.96 g/mol (air) / 100 kPA (at sea level?)
+
+days_per_mon:=30.4
+
+Qa := -90 #intercept of net v. solar radiation relationship (W/m2)
 Qb := 0.8 #slope of net v. solar radiation relationship
 
 m0:=0
 pRx:=0.8  #maximum root biomass partitioning
 pRn:=0.25 #minimum root biomass partitioning
-#pFS2 = 1             'Foliage:stem partitioning ratios for D = 2cm
-#pFS20 = 0.15         '  and D = 20cm
+#pFS2 = 0.8567             'Foliage:stem partitioning ratios for D = 2cm
+#pFS20 = 0.059         '  and D = 20cm
 #pfsPower = Log(pFS20 / pFS2) / Log(20 / 2)
 #pfsConst = pFS2 / 2 ^ pfsPower
-pfsPower:=-0.8239
-pfsConst:=1.7701
+pfsPower:=-1.161976
+pfsConst:=1.91698
 
-StemConst:=0.095
-StemPower:=2.4
+poplar.StemConst:=0.0771
+poplar.StemPower:=2.2704
 
 wSx1000:= 300
 thinPower:=1.5 # 3/2
+
+irrigFrac:=0
+
+# Modfications from Quinn
+# At 4m^2/tree Stocking density is 2500 tree/ha
+StockingDensity:=2500 # [tree/ha]
+SeedlingMass:=0.001 # in [t/tree]
+# Need to decide about the thinPower for Plantations. 
+# Maybe remove stem loss if plantation?
 
 # Are we currently Running Grass?
 ifndef GISRC
@@ -139,7 +158,7 @@ include solar.mk
 # PRISM in own Makefile
 include prism.mk
 
-fractions:=poplar.fVPD fAGE fT fFrost fSMR
+fractions:=poplar.fVPD fAGE poplar.fT fFrost fSMR
 $(foreach f,${fractions},$(eval m.${f}s:=$(patsubst %,%/cellhd/$f,${m.mapsets})))
 
 .PHONY:poplar.fVPD
@@ -148,13 +167,13 @@ poplar.fVPD:${m.poplar.fVPDs}
 ${m.poplar.fVPDs}:${m3pg.loc}/%/cellhd/poplar.fVPD:${m3pg.loc}/%/cellhd/tmin ${m3pg.loc}/%/cellhd/tmax ${m3pg.loc}/%/cellhd/tdmean
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
-        r.mapcalc 'VPD=(0.6108/2*(exp(tmin*17.27/(tmin + 237.3))+ exp(tmax*17.27/(tmax+237.3))))-(0.6108*exp(tdmean)*17.27/((tdmean+237.3)))'; \
+        r.mapcalc 'VPD=(0.6108/2*(exp(tmin*17.27/(tmin + 237.3))+ exp(tmax*17.27/(tmax+237.3))))-(0.6108*exp(tdmean*17.27/(tdmean+237.3)))'; \
 	r.support map=VPD units=kPa source1='Derived from PRISM' \
 	  description='Mean vapor pressure deficit';\
-	r.mapcalc 'poplar.fVPD=exp(${poplar.kG}*VPD)'; \
+	r.mapcalc 'poplar.fVPD=exp(-1*${poplar.kG}*VPD)'; \
 	r.support map=poplar.fVPD units=unitless source1='3PG Model' \
 	  description='Vapor Pressure Deficit Modifier (Poplar)';\
-	r.colors map=poplar.fVPD colors=grey1.0;
+	r.colors map=poplar.fVPD color=grey1.0;
 
 fFrost:${m.fFrosts}
 ${m.fFrosts}:${m3pg.loc}/%/cellhd/fFrost:${m3pg.loc}/%/cellhd/tmin
@@ -164,17 +183,21 @@ ${m.fFrosts}:${m3pg.loc}/%/cellhd/fFrost:${m3pg.loc}/%/cellhd/tmin
 	r.support map=fFrost units=unitless source1='3PG Model' \
 	  source2='Estimated from tmin' \
 	  description='Number of Freeze Days Modifier';\
-	r.colors map=fFrost colors=grey1.0;
+	r.colors map=fFrost color=grey1.0;
 
-fT:${m.fTs}
-${m.fTs}:${m3pg.loc}/%/cellhd/fT:${m3pg.loc}/%/cellhd/tdmean
+poplar.fT:${m.poplar.fTs}
+${m.poplar.fTs}:${m3pg.loc}/%/cellhd/poplar.fT:${m3pg.loc}/%/cellhd/tdmean
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=$*; \
 	g.region rast=Z@m3pg; \
-	r.mapcalc  'fT=if((tdmean <= ${Tmin} || tdmean >= ${Tmax}),0,((tdmean - ${Tmin}) / (${Topt} - ${Tmin})) * ((${Tmax} - tdmean) / (${Tmax} - ${Topt})) ^ ((${Tmax} - ${Topt}) / (${Topt} - ${Tmin})))'; \
-	r.support map=fT units=unitless source1='3PG Model' \
-	  source2='Estimated from tdmean' \
+	r.mapcalc 'tavg=(tmin+tmax)/2'; \
+	r.support map=tavg units=C source1='3PG Model' \
+	  source2='Estimated Average temperature' \
 	  description='Temperature modifier';\
-	r.colors map=fT colors=grey1.0;
+	r.mapcalc  'poplar.fT=if((tavg <= ${Tmin} || tavg >= ${Tmax}),0,((tavg - ${Tmin}) / (${Topt} - ${Tmin})) * ((${Tmax} - tavg) / (${Tmax} - ${Topt})) ^ ((${Tmax} - ${Topt}) / (${Topt} - ${Tmin})))'; \
+	r.support map=poplar.fT units=unitless source1='3PG Model' \
+	  source2='Estimated from tavg' \
+	  description='Temperature modifier';\
+	r.colors map=poplar.fT color=grey1.0;
 
 
 # Starting mapset
@@ -183,48 +206,71 @@ start:=2012-03
 .PHONY:${start}
 ${start}:${m3pg.loc}/${start}/cellhd/WF
 
-# Seedlings = 1gm * 12000 trees/ha
 ${m3pg.loc}/${start}/cellhd/WF:${m3pg.loc}/%/cellhd/WF:
 	g.mapset -c location=$(notdir ${m3pg.loc}) mapset=${*}; \
 	g.region rast=Z@m3pg;
 	r.mapcalc StandAge=1.0/12;
-	r.mapcalc WF= 0.5*12000/10000;
-	r.mapcalc WR=0.25*12000/10000;
-	r.mapcalc WS=0.25*12000/10000;
-	r.mapcalc ASW=0.8*maxAWS@statsgo;
+	r.mapcalc WF= 0.5*${StockingDensity}*${SeedlingMass};
+	r.support map=WF units='t/ha' description='Foliage Biomass';
+	r.colors map=WF rast=WF@default_colors
+	r.mapcalc WR= 0.25*${StockingDensity}*${SeedlingMass};
+	r.colors map=WR rast=WR@default_colors
+	r.support map=WR units='t/ha' description='Root Biomass';
+	r.mapcalc WS= 0.25*${StockingDensity}*${SeedlingMass};
+	r.colors map=WS rast=WS@default_colors
+	r.support map=WS units='t/ha' description='Stem Biomass';
+	r.mapcalc ASW=0.8*10*maxAWS@statsgo;
+	r.support map=ASW units='mm' description='Available Soil Water';
 	r.mapcalc 'LAI=WF*0.1*(${SLA1}+(${SLA0} - ${SLA1}) * exp(-0.693147180559945 * (StandAge / ${tSLA}) ^ 2))'
-	r.mapcalc StemNo=12000.0;
-	r.mapcalc Count=12000.0;
+	r.mapcalc Intcptn='if(${LAImaxIntcptn}<=0,${MaxIntcptn},${MaxIntcptn}*min(1,LAI/${LAImaxIntcptn}))'
+	r.support map=Intcptn units='unitless' description='Canopy Rainfall interception'
+	r.mapcalc CumIrrig=0;
+	r.mapcalc Irrig=0;
+	r.mapcalc Transp=0;
 
 define add_month 
 
 .PHONY:$1
 
-$1:${m3pg.loc}/$1/cellhd/WF ${m3pg.loc}/$1/cellhd/ASW ${m3pg.loc}/$1/cellhd/LAI
+$1:${m3pg.loc}/$1/cellhd/WF ${m3pg.loc}/$1/cellhd/ASW ${m3pg.loc}/$1/cellhd/LAI ${m3pg.loc}/$1/cellhd/CumIrrig
 
 ${m3pg.loc}/$1/cellhd:
 	g.mapset -c "$1" || true
 	g.region rast=Z@m3pg;
 
+${m3pg.loc}/$1/cellhd/Irrig:${m3pg.loc}/$1/cellhd/Transp ${m3pg.loc}/$1/cellhd/Intcptn
+	g.mapset "$1"|| true
+	g.region rast=Z@m3pg;
+	r.mapcalc 'Irrig = max(0,${irrigFrac} * (Transp - (1-Intcptn)*"ppt@$3"))'
+	r.support map=Irrig units='mm/mon' description='Required Irrigation';
+
+${m3pg.loc}/$1/cellhd/CumIrrig:${m3pg.loc}/$2/cellhd/CumIrrig ${m3pg.loc}/$1/cellhd/Irrig
+	g.mapset "$1"|| true
+	g.region rast=Z@m3pg;
+	r.mapcalc 'CumIrrig = "CumIrrig@$2" + Irrig'
+	r.support map=CumIrrig units='mm' description='Cumulative Required Irrigation';
+
 ${m3pg.loc}/$1/cellhd/fAge:${m3pg.loc}/$2/cellhd/StandAge
 	g.mapset "$1"|| true
 	g.region rast=Z@m3pg;
-	r.mapcalc 'fAge=(1/(1+(("StandAge@$2"/${maxAge}) / ${rAge})^${nAge}))'
+	r.mapcalc 'fAge=if(${nAge}==0,1,(1/(1+(("StandAge@$2"/${maxAge}) / ${rAge})^${nAge})))'
 
-${m3pg.loc}/$1/cellhd/ASW:${m3pg.loc}/$2/cellhd/ASW ${m3pg.loc}/$1/cellhd/ET
+${m3pg.loc}/$1/cellhd/ASW:${m3pg.loc}/$2/cellhd/ASW ${m3pg.loc}/$1/cellhd/Transp ${m3pg.loc}/$1/cellhd/Intcptn ${m3pg.loc}/$1/cellhd/Irrig
 	g.mapset "$1"|| true
 	g.region rast=Z@m3pg;
-	r.mapcalc 'ASW = min(maxAWS@statsgo,max("ASW@$2" + "ppt@$3"/10.0 - ET,0))'
+	r.mapcalc 'ASW = min(maxAWS@statsgo*10,max("ASW@$2" + "ppt@$3" - (Transp + Intcptn * "ppt@$3") + Irrig,0))'
+	r.support map=ASW units='mm' description='Available Soil Water';
 
 ${m3pg.loc}/$1/cellhd/fSW:${m3pg.loc}/$2/cellhd/ASW
 	g.mapset "$1"|| true
 	g.region rast=Z@m3pg;
-	r.mapcalc 'fSW = 1 / (1 + ((1 - ("ASW@$2"/maxAWS@statsgo)) / swconst@statsgo) ^ swpower@statsgo)'
+	r.mapcalc 'fSW = 1 / (1 + (max(0.00001,(1 - ("ASW@$2"/10/maxAWS@statsgo)) / swconst@statsgo)) ^ swpower@statsgo)'
 
 ${m3pg.loc}/$1/cellhd/fNutr:${m3pg.loc}/$1/cellhd
 	g.mapset "$1"|| true
 	g.region rast=Z@m3pg;
 	r.mapcalc 'fNutr = ${fN0} + (1 - ${fN0}) * ${FR}'
+	r.support map=fNutr units='unitless' description='Nutritional Fraction, might be based on soil and fertilizer at some point'
 
 ${m3pg.loc}/$1/cellhd/PhysMod:${m3pg.loc}/$3/cellhd/poplar.fVPD ${m3pg.loc}/$1/cellhd/fSW ${m3pg.loc}/$1/cellhd/fAge 
 	g.mapset "$1"|| true;\
@@ -238,42 +284,55 @@ ${m3pg.loc}/$1/cellhd/LAI:${m3pg.loc}/$2/cellhd/WF ${m3pg.loc}/$2/cellhd/StandAg
 	r.mapcalc 'LAI="WF@$2"*0.1*(${SLA1}+(${SLA0} - ${SLA1}) * exp(-0.693147180559945 * ("StandAge@$2" / ${tSLA}) ^ 2))'
 	r.support map=LAI units='m2/m2' description='Leaf Area Index';\
 
+
+${m3pg.loc}/$1/cellhd/Intcptn:${m3pg.loc}/$1/cellhd/LAI
+	g.mapset "$1"|| true;\
+	g.region rast=Z@m3pg;\
+	r.mapcalc Intcptn='if(${LAImaxIntcptn}<=0,${MaxIntcptn},${MaxIntcptn}*min(1,LAI/${LAImaxIntcptn}))'
+	r.support map=Intcptn units='unitless' description='Canopy Rainfall interception'
+
 ${m3pg.loc}/$1/cellhd/CanCond:${m3pg.loc}/$1/cellhd/LAI ${m3pg.loc}/$1/cellhd/PhysMod
 	g.mapset "$1"|| true;\
 	g.region rast=Z@m3pg;\
 	r.mapcalc 'CanCond=max(0.0001,${MaxCond}*PhysMod*min(1,LAI/${LAIgcx}))';\
 	r.support map=CanCond units='gc,m/s' description='Canopy Conductance';\
 
-${m3pg.loc}/$1/cellhd/ET:${m3pg.loc}/$3/cellhd/nrel ${m3pg.loc}/$3/cellhd/daylight ${m3pg.loc}/$3/cellhd/VPD ${m3pg.loc}/$1/cellhd/CanCond 
-#${m3pg.loc}/$1/cellhd/ET:${m3pg.loc}/$3/cellhd/nrel ${m3pg.loc}/$3/cellhd/VPD ${m3pg.loc}/$1/cellhd/CanCond 
+${m3pg.loc}/$1/cellhd/Transp:${m3pg.loc}/$3/cellhd/nrel ${m3pg.loc}/$3/cellhd/daylight ${m3pg.loc}/$3/cellhd/VPD ${m3pg.loc}/$1/cellhd/CanCond 
 	g.mapset "$1"|| true;\
 	g.region rast=Z@m3pg;\
-	r.mapcalc 'ET = 30.4*(${e20}*(${Qa}+${Qb}*("nrel@$3"/"daylight@$3")) + (${rhoAir}*${lambda}*${VPDconv}*"VPD@$3"*${BLcond})) / (1+${e20}+${BLcond}/CanCond)';\
-	r.support map=ET units='m/mon' description='Canopy Monthly Evapotranspiration';
+	r.mapcalc 'Transp = ${days_per_mon}*((${e20}*(${Qa}+${Qb}*("nrel@$3"/"daylight@$3")) + (${rhoAir}*${lambda}*${VPDconv}*"VPD@$3"*${BLcond})) / (1+${e20}+${BLcond}/CanCond))*"daylight@$3"*3600/${lambda}';\
+	r.support map=Transp units='mm/mon' description='Canopy Monthly Transpiration';
+
+# Stem calculations not appropropriate for biofuels
+#	r.mapcalc 'delStemsTmp="StemNo@$2" - 1000*(${wSx1000} * "StemNo@$2"/"WS@$2"/ 1000) ^ (1 / ${thinPower})'
+#	r.mapcalc avDBH='(("WS@$2"*1000/"StemNo@$2")/${StemConst})^(1/${StemPower})';
+#	r.mapcalc StemNo='"StemNo@$2"-delStemsTmp';
+#	r.mapcalc pS='(1-pR)/(1+((${pfsConst})*avDBH^${pfsPower}))'
 
 ${m3pg.loc}/$1/cellhd/WF:${m3pg.loc}/$2/cellhd/WF ${m3pg.loc}/$1/cellhd/fSW ${m3pg.loc}/$1/cellhd/fAge ${m3pg.loc}/$1/cellhd/fNutr ${m3pg.loc}/$2/cellhd/LAI ${m3pg.loc}/$1/cellhd/PhysMod
 	g.mapset "$1"|| true
 	g.region rast=Z@m3pg;
 	r.mapcalc 'CanCover=if("StandAge@$2"<${fullCanAge},"StandAge@$2"/${fullCanAge},1)'
-	r.mapcalc 'NPP = "xPP@$3" * 1-(exp(-${k}*"LAI@$2")) * CanCover * min("poplar.fVPD@$3",fSW) * fAge * fNutr * "fT@$3" * "fFrost@$3"'
-	r.mapcalc 'delLitter = ${gammaFx} * ${gammaF0} / (${gammaF0} + (${gammaFx} - ${gammaF0}) *  exp(-12 * log(1 + ${gammaFx} /${gammaF0}) * "StandAge@$2" / ${tgammaF}))* "WF@$2"'
-	r.mapcalc 'delRoots=${Rttover}*"WR@$2"'
-	r.mapcalc 'delStemsTmp="StemNo@$2" - 1000*(${wSx1000} * "StemNo@$2"/"WS@$2"/ 1000) ^ (1 / ${thinPower})'
+	r.mapcalc 'NPP = "xPP@$3" * (1-(exp(-${k}*"LAI@$2"))) * CanCover * min("poplar.fVPD@$3",fSW) * fAge * ${poplar.alpha} * fNutr * "poplar.fT@$3" * "fFrost@$3"'
+	r.support map=NPP units='metric tons Dry Matter/ha' title='Net Primary Production [tDM / ha month]'
+	r.mapcalc 'litterfall = ${gammaFx} * ${gammaF0} / (${gammaF0} + (${gammaFx} - ${gammaF0}) *  exp(-12 * log(1 + ${gammaFx} /${gammaF0}) * "StandAge@$2" / ${tgammaF}))'
 
-	# End of Month Biomass
 	r.mapcalc pR='${pRx} * ${pRn} / (${pRn} + (${pRx} - ${pRn}) * PhysMod * (${m0}+(1-${m0})*${FR}))';
-
-	r.mapcalc avDBH='(("WS@$2"*1000/"StemNo@$2")/${StemConst})^(1/${StemPower})';
-
+	r.mapcalc avDBH='(("WS@$2"*1000/${StockingDensity})/${poplar.StemConst})^(1/${poplar.StemPower})';
 	r.mapcalc pS='(1-pR)/(1+((${pfsConst})*avDBH^${pfsPower}))'
 	r.mapcalc pF=1-pR-pS;
-
-	r.mapcalc WF='"WF@$2"+NPP*pF-delLitter';
-	r.mapcalc WR='"WR@$2"+NPP*pR-delRoots';
+	r.mapcalc WF='"WF@$2"+NPP*pF-litterfall*"WF@$2"';
+	r.colors map=WF rast=WF@default_colors
+	r.support map=WF units='t/ha' description='Foliage Biomass';
+	r.mapcalc WR='"WR@$2"+NPP*pR-${Rttover}*"WR@$2"';
+	r.colors map=WR rast=WR@default_colors
+	r.support map=WR units='t/ha' description='Root Biomass';
 	r.mapcalc WS='"WS@$2"+NPP*pS';
+	r.colors map=WS rast=WS@default_colors
+	r.support map=WS units='t/ha' description='Stem Biomass';
 	r.mapcalc W='WF+WR+WS';
+	r.support map=W units='t/ha' description='Tree Biomass';
 	r.mapcalc StandAge='"StandAge@$2"+1.0/12';
-	r.mapcalc StemNo='"StemNo@$2"-delStemsTmp';
 
 endef
 
