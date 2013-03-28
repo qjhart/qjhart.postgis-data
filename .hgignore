@@ -18,13 +18,19 @@ syntax: glob
 *.pyc
 *~
 
+
 # Download directories
 # Whynot just exclude the data? (*.shp, etc.)
 syntax:glob
 prism/prism.oregonstate.edu*
 national_atlas/edcftp.cr.usgs.gov*
 refineries/www.google.com*
+nass/quickstats/*
+statsgo/db.afri*
+statsgo/gsmsoil_us
 
 # Don't include db file touches.
 syntax: regexp
 (.*/)db(/.*)
+# Grass GDB files
+(.*/)gdb(/.*)
