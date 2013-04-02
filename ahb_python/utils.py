@@ -136,5 +136,6 @@ class railCost:
         wsc=wheelStops*self.wheelStopCost
         lineCost=self.lengthFactoredCost(length,railWeight)
         additional=bc+cc+wsc
-        return {'total':[additional+lineCost, 'total spur construction cost'], 'lnCon':[lineCost,'distance dependent cost plus mainline connection'], 'unitItems':{'bumpers':bc,'crossingSignals':cc,'wheelStops':wsc}}
+        land=self.landCost(length)
+        return {'total':[additional+lineCost+land, 'total spur construction cost'], 'lnConst':[lineCost,'distance dependent cost plus mainline connection'], 'unitItems':{'bumpers':bc,'crossingSignals':cc,'wheelStops':wsc}, 'landCost':land}
 
