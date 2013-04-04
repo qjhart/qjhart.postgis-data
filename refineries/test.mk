@@ -70,7 +70,7 @@ db/hasProxy: db/${fClust} db/${cClust}
 	touch $@
 
 db/r_locations: db/hasProxy
-	${PG} -c "set search_path= ${schema}, public, afri, cmz; drop table if exists ${schema}.r_locations; create table ${schema}.r_locations as select distinct clabel, '${ifClust}' loc_type, foo.geom  from ${ifClust}_${bw}_link join (select clabel, cl.geom from ${ifClust}s_${bw} cl, cmz.cmz_pnw cz where st_intersects(cz.geom, cl.geom)) as foo using (clabel) union select distinct clabel, 'urban_cluster' loc_type, foo.geom  from ${cClust}_${bw}_link join (select clabel, cl.geom from ${cClust}s_${bw} cl, cmz.cmz_pnw cz where st_intersects(cz.geom,cl.geom)) as foo using (clabel) where has_proxy='f'"
+	${PG} -c "set search_path= ${schema}, public, afri, cmz; drop table if exists ${schema}.r_locations; create table ${schema}.r_locations as select distinct clabel, '${ifClust}' loc_type, foo.geom  from ${ifClust}_${bw}_link join (select clabel, cl.geom from ${ifClust}s_${bw} cl, cmz.cmz_pnw cz where st_intersects(cz.geom, cl.geom)) as foo using (clabel) union select distinct clabel, 'urban_cluster' loc_type, foo.geom  from ${cClust}_${bw}_link join (select clabel, cl.geom from ${cClust}s_${bw} cl, cmz.cmz_pnw cz where st_intersects(cz.geom,cl.geom)) as foo using (clabel) where has_proxy='f'; alter table ${schema}.r_locations add column rlid serial primary key;"
 	touch $@
 
 /tmp/locations.csv: db/r_locations

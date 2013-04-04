@@ -43,5 +43,13 @@ db/national_atlas.county db/national_atlas.state:db/national_atlas.statesp020 db
 	${PG} -f county_and_state.sql
 	touch db/national_atlas.county db/national_atlas.state
 
+#Get hydrography data. this is used to restrict the route of new rail spurs to connect facilities 
 
+db/1Mhydro:
+	curl -O http://dds.cr.usgs.gov/pub/data/nationalatlas/hydrogm020_nt00015.tar.gz
+	tar -xzf hydrogm020_nt00015.tar.gz
+	${shp2pgsql} -S -s 4326 hydrogl020.shp national_atlas.hydrogl020| ${PG}
+	${PG} -c "create index idx_hydrogl020 on national_atlas.hydrogl020 using gist(the_geom); select addgeometrycolumn('national_atlas', 'hydrogl020', 'geom',97260,'LINESTRING',2); update national_atlas.hydrogl020 set geom = st_transform(the_geom,97260); alter table national_atlas.hydrogl020 drop column the_geom;"
+	rm -r hydro*
+	touch $@
 
